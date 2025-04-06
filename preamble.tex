@@ -95,14 +95,22 @@
 
 \def\subsubsubsection#1{\par\smallskip\noindent{\setfontandscale{bf}{10pt}#1}\ }
 
-\def\bdicttable{%
+\def\bthreetable#1#2#3{%
     \bgroup\tabskip=0pt plus1fil%
     \everycr={\noalign{\vskip2\jot}}%
-    \halign to\hsize\bgroup\strut{\bf ##}\hfil\tabskip=1cm&##\hfil&%
-    \vtop{\hsize=.6\hsize\parindent=\z@##}\hfil\tabskip=0pt plus1fil\crcr
+    \halign to\hsize\bgroup\strut{#1 ##}\hfil\tabskip=1cm&{#2##}\hfil&%
+    \vtop{\hsize=.6\hsize\parindent=\z@#3##}\hfil\tabskip=0pt plus1fil\crcr
+}
+\def\ethreetable{\crcr\noalign{\hrule}\egroup\egroup\par\medskip}
+
+\def\bdicttable{%
+    \bthreetable{\bf}{}{}
     {\bf Key}&{\bf Type}&{\bf Value}\crcr\noalign{\hrule\vskip2\jot}
 }
-\def\edicttable{\crcr\noalign{\hrule}\egroup\egroup\par\medskip}
+\let\edicttable=\ethreetable
+
+\def\nattrans,{.996264 0 0 .996264 0 0 cm}
+
 
 \def\interpolate{\mathop{\rm Interpolate}}
 \def\frac#1#2{{{#1}\over{#2}}}

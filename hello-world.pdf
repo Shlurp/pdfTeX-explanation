@@ -1,0 +1,114 @@
+%PDF-1.5
+%ÐÔÅØ
+3 0 obj
+<<
+/Length 66        
+>>
+stream
+BT
+/F1 9.9626 Tf 91.925 759.927 Td [(Hello)-333(w)27(orld!)]TJ
+ET
+
+endstream
+endobj
+8 0 obj
+<<
+/Length1 1472
+/Length2 9273
+/Length3 0
+/Length 10745     
+>>
+stream
+%!PS-AdobeFont-1.0: CMR10 003.002
+%%Title: CMR10
+%Version: 003.002
+...
+endstream
+endobj
+11 0 obj
+<<
+/Producer (pdfTeX-1.40.26)
+...
+>>
+endobj
+5 0 obj
+<<
+/Type /ObjStm
+/N 7
+/First 43
+/Length 1150      
+>>
+stream
+2 0 1 106 7 168 9 649 4 878 6 1010 10 1062
+% 2 0 obj
+<<
+/Type /Page
+/Contents 3 0 R
+/Resources 1 0 R
+/MediaBox [0 0 595.276 841.89]
+/Parent 6 0 R
+>>
+% 1 0 obj
+<<
+/Font << /F1 4 0 R >>
+/ProcSet [ /PDF /Text ]
+>>
+% 7 0 obj
+[ ... ]
+% 9 0 obj
+<<
+/Type /FontDescriptor
+/FontName /IEQIOR+CMR10
+/Flags 4
+/FontBBox [-40 -250 1009 750]
+/Ascent 694
+/CapHeight 683
+/Descent -194
+/ItalicAngle 0
+/StemV 69
+/XHeight 431
+/CharSet (/H/d/e/exclam/l/o/r/w)
+/FontFile 8 0 R
+>>
+% 4 0 obj
+<<
+/Type /Font
+/Subtype /Type1
+/BaseFont /IEQIOR+CMR10
+/FontDescriptor 9 0 R
+/FirstChar 33
+/LastChar 119
+/Widths 7 0 R
+>>
+% 6 0 obj
+<<
+/Type /Pages
+/Count 1
+/Kids [2 0 R]
+>>
+% 10 0 obj
+<<
+/Type /Catalog
+/Pages 6 0 R
+>>
+
+endstream
+endobj
+12 0 obj
+<<
+/Type /XRef
+/Index [0 13]
+/Size 13
+/W [1 2 1]
+/Root 10 0 R
+/Info 11 0 R
+/ID [<804F5DFAA39FA28E85E2211C48BC665E> <804F5DFAA39FA28E85E2211C48BC665E>]
+/Length 52        
+>>
+stream
+...
+endstream
+endobj
+startxref
+12479
+%%EOF

@@ -38,5 +38,239 @@ PDF 1.4 and later use a transparent imaging model, meaning that objects may be s
 amount of transparency, so that objects underneath it may also affect the color painted.
 By default objects are painted as opaque.
 
+\subsection{Coordinate systems}
 
+Positions in the document are determined in terms of coordinates on a plane.
+A coordinate space is determined by the following properties relative to the current page:
+\blist
+    \item the location of the origin;
+    \item the orientation of the $x$ and $y$ axes;
+    \item the lengths of the units along each axis.
+\elist
+There are several coordinate spaces defined by the PDF, which will be described in this section.
+Transformations between coordinate spaces are done via affine transformations (transformations of the form
+$x\mapsto Ax+b$, where $A$ is a matrix and $b$ a vector).
 
+The coordinate space which is native to a specific device is called its {\it device space}.
+
+\subsubsection{User space}
+
+To avoid the issues arising from using device-dependent coordinate spaces, PDF defines a device-independent
+coordinate system that remains the same relative to the current page no matter the medium in which it is
+displayed or printed.
+This is called the {\it user space} coordinate system.
+
+The {\bf CropBox} entry in a page dictionary specifies the rectangle of user space corresponding to the visible
+area on the output medium.
+The length of a unit along both the $x$ and $y$ axes is set by {\bf UserUnit} (in PDF-1.6).
+If the entry is not supplied (or supported), the default value is $1/72$th of an inch.
+{\bf CropBox} defines the rectangular region for which the page is to be displayed in the infinite plane that
+is the user space.
+
+The transformation from user to device space is defined by the CTM (current transformation matrix).
+This is stored in the PDF graphics state (to be dicussed below).
+A PDF content stream can modify user space by using the {\bf cm} operator (coordinate transformation
+operator).
+
+\subsubsection{Other coordinate spaces}
+
+In addition to device and user space, PDF utilizes a variety of other coordinate systems:
+\blist
+    \item The coordinates of text are defined in {\it text space}.
+    The translation from text space to user space is defined by a {\it text matrix} as well as several
+    text-related parameters in the graphics state (see below).
+    \item All sampled images are defined in {\it image space}.
+    The transformation from image to user space is predefined and cannot be changed.
+    All images are one-unit by one-unit in user space.
+    To paint them, the CTM must be temporarily changed.
+    \item A form XObject as a self-contained content stream is defined in a {\it form space}.
+    When painted in another content stream, its space is transformed into user space using the {\it form
+    matrix} which is defined in the form XObject.
+    \item A pattern (which is content invoked repeatedly to tile an area) is defined in a space called
+    {\it pattern space}.
+    The transformation from pattern space to user space is defined in a {\it pattern matrix} contained in the
+    pattern.
+\elist
+
+\subsubsection{Transformation matrices}
+
+A transformation, as discussed previously, is an affine transformation of the form $x\mapsto Ax+b$ where
+$A$ is a $2\times2$ matrix and $b$ a vector of size $2$.
+Suppose we want to transform $(x,y)$ to $(x',y')$ via such an affine transformation, then
+$$ \pmatrix{x'\cr y'} = \pmatrix{a&c\cr b&d}\pmatrix{x\cr y}+\pmatrix{e\cr f} $$
+or, we can write this as
+$$ \pmatrix{x'\cr y'\cr1} = \pmatrix{a&b&e\cr b&d&f\cr0&0&1}\pmatrix{x\cr y\cr1} $$
+The reason we add the final line of the matrix is to make it square.
+So if the current CTM is $M$ and we'd like to transform it by the affine transformation described by matrix
+$A$, then we must change CTM to be $M\cdot A$.
+Thus if we are given an input coordinate $X$, then we first apply $A$ and then $M$.
+
+\bnote
+In the PDF reference, they take the convention of multiplying by row vectors on the left.
+So the affine transformation is represented by the tranpose of the matrix provided here.
+Nevertheless, the results are the same.
+\eppbox
+
+The affine transformation represented by
+$$ \pmatrix{a&b&e\cr b&d&f\cr0&0&1} $$
+is represented in PDF code by $[a\ b\ c\ d\ e\ f]$.
+
+\subsection{Graphics State}
+
+When rendering a PDF, an internal state must be held by the application which determines the current state to
+be used when rendering graphics.
+The graphics state is initialized at the beginning of each page according to the table below.
+
+\bthreetable{}{}{}
+{\bf Parameter}&{\bf Type}&{\bf Value}\cr\noalign{\hrule\vskip2\jot}
+CTM&array&The current transformation matrix, which maps user space to device space.
+The CTM can be modified by use of the {\bf cm} operator.\cr
+clipping path&(internal)&The current {\it clipping path}, which defines the boundary against which all
+output is to be cropped.
+The initial value is the boundary of the entire imageable portion of the page.\cr
+color space&name or array&The current {\it color space} which determines how color values are to be
+interpreted (e.g. RGB).
+There are two separate color spaces: one for stroking and one for filling.
+The initial value is {\bf DeviceGray}.\cr
+color&(various)&The current color to be used when painting.
+The type and interpretation of the color depends on the current color space.
+There are two color parameters: one for stroking and one for filling.
+The initial value is black.\cr
+text state&(various)&A set of nine graphics state parameters that affect the painting of text (see below).\cr
+line width&number&The thickness, in user space units, of paths to be stroked.
+Initial value: $1.0$.\cr
+line cap&integer&A code specifying the shape of endpoints for any stroked open paths (see below).
+Initial value: $0$ (square caps).\cr
+line join&integer&A code specifying the shape of joints between connected segments of a stroked path.
+Initial value: $0$ (mitered joints).\cr
+miter limit&number&The maximum length of mitered line joins for stroked paths (the length of the spikes when
+lines join at sharp angles).
+Initial value: $10.0$.\cr
+dash pattern&array and number&A description of the dash pattern to be used when paths are stroked (see below).
+Initial value: a solid line.\cr
+blend mode&name or array&The current {\it blend mode} to be used in the transparent imaging model (see below).
+This parameter is reset to its initial value at the beginning of execution of a transparency group XObject.
+Initial value: {\bf Normal}.\cr
+soft mask&dictionary or name&A {\it soft-mask} dictionary (see below), specifying the mask shape or opacity
+values to be used in the transparent imaging model, or {\bf None}.
+This parameter is reset to its initial value at the beginning of execution of a transparency group XObject.
+Initial value: {\bf None}.\cr
+alpha constant&number&The constant shape or constant opacity value to be used in the transparent imaging
+model.
+There are two alpha constant parameters: one for stroking and another for filling.
+This parameter is reset to its initial value at the beginning of execution of a transparency group XObject.
+Initial value: $1.0$.\cr
+alpha source&boolean&A flag specifying whether the current soft mask and alpha constant parameters are to be
+interepreted as shape values ({\bf true}) or opacity values ({\bf false}).
+Initial value: {\bf false}.
+\ethreetable
+
+Some parameters are set with specific operators, while others are set by including a particular entry in a
+graphics state parameter dictionary.
+Some can be set either way.
+For example, the line width can be set using the {\bf w} operator, or with the {\bf LW} entry.
+
+The {\it graphics state stack} allows for local changes to the graphics state, so you can change it without
+affecting things outside the current scope.
+The stack is a stack (LIFO --- last in first out) data structure.
+The {\bf q} operator pushes a copy of the graphics state onto the stack, while {\bf Q} pops from the stack.
+Occurrences of {\bf q} and {\bf Q} must be balanced within a content stream.
+
+\subsubsection{Line caps}
+
+\def\showlinecap#1{%
+    \hbox to50pt{\pdfliteral{%
+        q
+        \nattrans,
+        #1 J
+        10 w
+        0 g 0 G
+        0 0 m 50 0 l S
+        1 J
+        1 w
+        1 g 1 G
+        0 0 m 50 0 l S
+        Q
+    }\hfil}%
+}
+
+We demonstrate in the table below the three styles of line caps.
+These are the ends of open subpaths (and dashes) when they are stroked.
+
+\bthreetable{}{}{}
+{\bf Style}&{\bf Appearance}&{\bf Description}\cr\noalign{\hrule\vskip2\jot}
+0&\showlinecap0&{\it Butt cap}: the stroke is squared off at the endpoint of the path.
+There is no projection beyond the end of the path.\cr
+1&\showlinecap1&{\it Round cap}: the stroke is rounded off with semicircular ends on both sides of the stroke.
+The diameter of the capp is equal to the line width.\cr
+2&\showlinecap2&{\it Projecting square cap}: the stroke continues beyond the endpoint of the path for a
+distance equal to half the line width and is squared off.
+\ethreetable
+
+\subsubsection{Line Joins}
+
+\def\showlinejoin#1{%
+    \hbox to50pt{\vrule width\z@ height0pt depth35pt%
+    \pdfliteral{%
+        q
+        \nattrans,
+        1 0 0 1 0 -35 cm
+        1 J
+        #1 j
+        10 w
+        0 g 0 G
+        0 0 m 25 30 l 50 0 l S
+        1 j
+        1 w
+        1 g 1 G
+        0 0 m 25 30 l 50 0 l S
+        Q
+    }\hfil}%
+}
+
+\bthreetable{}{}{}
+{\bf Style}&{\bf Appearance}&{\bf Description}\cr\noalign{\hrule\vskip2\jot}
+0&\showlinejoin0&{\it Miter join}: the outer edges of the strokes for the segments are extended until they meet
+at an angle.
+If the angles meet at too sharp an angle (as defined by the miter limit parameter, though we won't go into
+this), a bevel join is used instead.\cr
+1&\showlinejoin1&{\it Round join}: an arc of a circle with diameter equal to the line width is drawn around
+the point where the two segments meet.\cr
+2&\showlinejoin2&{\it Bevel join}: ythe two segments are finished with butt caps.
+\ethreetable
+
+\subsubsection{Line dash pattern}
+
+The {\it line dash pattern} controls the pattern of dashes and gaps used by stroked paths.
+It is specified by a {\it dash array} and a {\it dash phase}.
+The dash array's elements are numbers that specify the lengths of alternating dashes and gaps (they must all
+be nonnegative and not all zero).
+The dash phase specifies the distance into the dash pattern at which to start the dash.
+When dashing begins, the elements of the dash array are cyclicly summed up, and when the sum equals the dash
+phase, the stroking of the phase begins.
+
+\def\showdash#1{%
+    \hbox to100pt{\pdfliteral{%
+        q
+        \nattrans,
+        0 j 0 J
+        0 g 0 G
+        .3 w
+        [1] 0 d
+        0 -5 100 10 re S
+        4 0 0 1 0 0 cm
+        #1 d
+        10 w
+        0 0 m 25 0 l S
+        Q
+    }\hfil}%
+}
+
+\bthreetable{\tt}{}{}
+{\bf Dash}&{\bf Appearance}&{\bf Description}\cr\noalign{\hrule\vskip2\jot}
+[] 0&\showdash{[] 0}&No dash\cr
+[3] 0&\showdash{[3] 0}&3 units on, 3 units off,\dots\cr
+[2] 1&\showdash{[2] 1}&1 on, 2 off, 2 on,\dots\cr
+[2 1] 0&\showdash{[2 1] 0}&2 on, 1 off, 2 on,\dots\cr
+[3 5] 6&\showdash{[3 5] 6}&2 off, 3 on, 5 off,\dots
+\ethreetable
