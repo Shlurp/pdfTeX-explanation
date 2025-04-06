@@ -1,0 +1,118 @@
+\catcode`@=11
+\edef\ulineccode{\the\catcode`_}
+\catcode`_=11
+
+\def\date{April, 2025}
+
+\def\bwarning{\bppbox{rgb{1 .6 .6}}{rgb{.4 0 0}}{rgb{.4 0 0}}}
+\def\bnote{\bppbox{rgb{1 1 .6}}{rgb{.4 .4 0}}{rgb{.4 .4 0}}}
+
+\def\LaTeX{L\kern-.36em{\setbox0=\hbox{T}\vbox to\ht0{\hbox{\sevenrm A}\vss}}\kern-.15em\TeX}
+
+\def\_setupverb{\setupverb\catcode`\ =10\relax}
+\def\verbfile#1{{\_setupverb\input{#1}}}
+
+\chardef\fslash=`\/
+{\catcode`\^^M=\active%
+\gdef\begincode{%
+    \bgroup\everypar={}%
+    \medskip%
+    \setbox0=\vbox\bgroup%
+    \global\dimen69=0pt%
+    \tt%
+    \catcode`\^^M=\active%
+    \def^^M{\egroup\ifnum\wd1>\dimen69 \global\dimen69=\wd1\fi\copy1\setbox1=\hbox\bgroup}%
+    \catcode`\ =\active%
+    \catcode`\{=12%
+    \catcode`\}=12%
+    \catcode`\/=0%
+    \catcode`\$=12%
+    \catcode`\\=12%
+    \catcode`\#=12%
+    \catcode`\%=12 \setbox1=\hbox\bgroup}}
+\def\endcode{%
+    \egroup\egroup%
+    \hfil\hbox to \dimen69{\box0}\hfil\par%
+    \medskip%
+    %\let\@par=\par%
+    \egroup%
+}
+
+\def\inlinecode#1{
+    \bgroup%
+    \_setupverb%
+    \catcode`#1=2%
+    \tt%
+}
+
+\def\macro#1{{\tt\string#1}}
+
+{\catcode`\<=\active
+\catcode`\^^M=\active%
+\gdef\_macrousage#1{%
+    \bgroup%
+    \catcode`\ =\active%
+    \catcode`\/=0%
+    \catcode`\{=12%
+    \catcode`\}=12%
+    \catcode`\$=12%
+    \catcode`\\=12%
+    \catcode`\<=\active%
+    \catcode`\^^M=\active%
+    \catcode`\#=12\relax%
+    \def<##1>{$\langle${\it ##1}$\rangle$}%
+    \def^^M{\crcr}%
+    \ifx.#1.%
+        \_afterfi{\setbox0=\vbox\bgroup\halign\bgroup\tt\hfil##\crcr}%
+    \else%
+        \_afterfi{\setbox0=\vbox\bgroup\halign\bgroup\tt##\hfil\crcr}%
+    \fi%
+}}
+\def\macrousage{\_macrousage{}}
+\def\emacrousage{\crcr\egroup\egroup\par\smallskip\centerline{\box0}\egroup\par\smallskip}
+\def\emacrousageB{\crcr\egroup\egroup\box0\egroup}
+
+\def\getmacrousage#1{{\_macrousage*\scantokens{#1}\emacrousage}}
+\def\getmacrousageB#1{{\_macrousage*\scantokens{#1}\emacrousageB}}
+
+\def\macroname#1{{\tt\string#1}}
+
+\chardef\lbrace="7B
+\chardef\rbrace="7D
+
+\def\_anchormacro#1#2\_nul{\anchor{\string#1}}
+\def\anchormacro#1{\anchor{\string#1}}
+
+\def\macroexp#1{\par\smallskip\bgroup\ifcsname inmacroexp\endcsname\errmessage{Already in macroexp}\fi\def\inmacroexp{}\leftskip=1cm\leavevmode\_anchormacro#1\_nul\kern-1cm\getmacrousageB{#1}:}
+\def\emacroexp{\par\egroup\smallskip}
+
+\def\gotomacro#1{\gotoanchor{\string#1}{{\tt\string#1}}}
+
+\def\displaycode#1{\centerline{\vbox{\def\cr{\crcr\relax}\halign{\hfil\gdef\@@{##}{\_setupverb\tt\scantokens\_xp\_xp\_xp{\_xp\_gobble\@@}}: &\_gobble{##}\@@\hfil\crcr\relax#1\crcr}}}}
+
+\def\_centerline{\hfil\egroup}
+\def\centerline{\hbox to\hsize\bgroup\hfil\bgroup\aftergroup\_centerline\let\@@}
+
+\def\subsubsubsection#1{\par\smallskip\noindent{\setfontandscale{bf}{10pt}#1}\ }
+
+\def\bdicttable{%
+    \bgroup\tabskip=0pt plus1fil%
+    \everycr={\noalign{\vskip2\jot}}%
+    \halign to\hsize\bgroup\strut{\bf ##}\hfil\tabskip=1cm&##\hfil&%
+    \vtop{\hsize=.6\hsize\parindent=\z@##}\hfil\tabskip=0pt plus1fil\crcr
+    {\bf Key}&{\bf Type}&{\bf Value}\crcr\noalign{\hrule\vskip2\jot}
+}
+\def\edicttable{\crcr\noalign{\hrule}\egroup\egroup\par\medskip}
+
+\def\interpolate{\mathop{\rm Interpolate}}
+\def\frac#1#2{{{#1}\over{#2}}}
+\def\dom{{\bf Domain}}
+\def\rng{{\bf Range}}
+
+\everylisting={\lstlinenum=\z@}
+
+\loadsyntax{TeX}
+\loadsyntax{pdf}
+
+\catcode`_=\ulineccode
+

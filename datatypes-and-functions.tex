@@ -1,0 +1,464 @@
+\subsection{Datatypes}
+
+PDF supports the following datatypes:
+\blist
+    \item booleans;
+    \item integers;
+    \item real numbers;
+    \item strings;
+    \item names;
+    \item arrays;
+    \item dictionaries;
+    \item streams;
+    \item the null object.
+\elist
+
+\subsubsection{Booleans}
+
+Booleans are determined by the keywords {\tt true} and {\tt false}.
+Integers are written with or without a sign, and a decimal point turns a number into a real number.
+
+\subsubsection{Strings}
+
+There are two ways to write a string: enclosing characters in parentheses, or, as hexadecimal data wrapped in
+single angle brackets ({\tt<...>}).
+So for example, {\tt(hello world)} represents the string ``hello world''.
+So does {\tt<68656C6C6F776F726C64>}.
+To add special characters (line feed, unbalanched parentheses, etc) you can add a backslash before (as one
+would normally).
+
+\subsubsection{Names}
+
+A name begins with a forward slash {\tt/}, and may contain any characters except for whitespace and delimiter
+characters (brackets, parentheses and friends, forward slash, or a percent sign).
+You can add any non-null character to a name (including special characters) by preceding its hexadecimal code
+with \inlinecode|#|.
+So for example, the following are names:
+
+\centerline{\inlinecode|/name|, \inlinecode|/name*with_special&characters|, \inlinecode|/#28parentheses#29|}
+
+\subsubsection{Arrays}
+
+Arrays are one-dimensional array objects, written in square brackets.
+They are delimited by whitespace, and can include any other object as a member.
+For example, the following is an array:
+
+\centerline{\inlinecode|[1 1.2 true (S. Lurp) /A_Name [true false]]|}
+As displayed in the above example, an array can contain an array as well, thus allowing multi-dimensional
+arrays.
+
+\subsubsection{Dictionaries}
+
+A dictionary is a mapping between name objects and instances of any datatype.
+A dictionary is enclosed in double angle brackets, like so:
+
+\blisting
+<<
+    /Type /A_Dictionary
+    /Subtype /Example
+    /IntItem 12
+    /NumItem 1.2
+    /StringItem (hello world)
+    /ArrItem [12 1.2 (hello world)]
+    /DictItem <<
+        /Item1 true
+        /Item2 false
+    >>
+>>
+\elisting
+
+Dictionaries are of extreme importantce in PDFs.
+They will show up a lot later.
+
+\subsubsection{Streams}
+
+A stream is similar to a string, except for a few key differences:
+\benum
+    \item a string must be read in its entirety, while a stream may be read incrementally;
+    \item a string has a maximum limit based on implementation, while a stream has no such limit (which is
+        why larger data like images or pages are stored in streams).
+\eenum
+
+A stream is structured as follows:
+
+\blisting
+<< dictionary >>
+stream
+...
+endstream
+\elisting
+
+A stream must be an \gotoanchor{indirect-objects}{{\it indirect object}}.
+The stream's dictionary which precedes the \inlinecode|stream...endstream| must have a \inlinecode|/Length|
+field which is equal to the byte length of the stream's content ({\tt...}).
+
+\subsubsection{Null}
+
+The null object is an object referencable by the keyword {\tt null}.
+It is not equal to any other object.
+An \gotoanchor{indirect-objects}{indirect object} which references a non-existent object is equivalent to the
+null object.
+And giving a dictionary entry the value {\tt null} is equivalent to omitting the entry.
+
+\subsubsection{Indirect Objects} \anchor{indirect-objects}
+
+Any object can be labeled as an {\it indirect object}.
+This allows other objects to reference it via a unique {\it object identifier}.
+The object identifier has two parts:
+\benum
+    \item a unique positive integer called the {\it object number};
+    \item a (not necessarily unique) non-negative integer called the {\it generation number}.
+        For our purposes, these are always zero.
+\eenum
+
+An indirect object is declared using the {\tt obj} postfix operator.
+Preceding it is the object identifier.
+The object's value itself is written between the {\tt obj} and {\tt endobj} keywords.
+For example:
+
+\blisting
+12 0 obj
+    [1 2 3]
+endobj
+\elisting
+
+Creates an array indirect object of value {\tt[1 2 3]}.
+Its object number is 12, and its generation number is 0.
+
+To reference this object, simply use the {\it indirect reference} \inlinecode|12 0 R|.
+
+For example, to create an indirect stream object, you could do:
+
+\blisting
+7 0 obj
+    << /Length 8 0 R >>
+stream
+    BT
+        /F1 12 Tf
+        72 712 Td
+        (A stream with an indirect length) Tj
+    ET
+endstream
+endobj
+
+8 0 obj
+    77
+endobj
+\elisting
+
+This defines object {\tt7 0 } to be a stream object containing the above contents.
+Its length is an indirect reference to object {\tt8 0}, whose value is $77$.
+
+\subsection{Trees}
+
+A tree is a composite datatype made up of other datatypes.
+Its purpose is similar to a dictionary: it maps keys to values, but by different means.
+They vary in some ways:
+\benum
+    \item the keys in a tree are either strings (name trees) or numbers (number trees);
+    \item the keys are ordered;
+    \item the values associated with the keys may be of any type (including {\tt null});
+    \item a tree can represent an arbitrarily large map, and can be read in parts, unlike a dictionary.
+\eenum
+
+There are two types of trees: name trees and number trees.
+The difference between them is the datatype of their keys: name trees use strings as keys while number trees
+use numbers.
+
+Every tree is constructed from nodes, which are dictionary objects.
+There are three kinds of nodes: a root node, intermediate nodes, and leaf nodes.
+The meaning of these are self-explanatory.
+
+\subsubsection{Number trees}
+
+A number tree node is a dictionary with the following fields:
+
+\bdicttable
+Kids&array&(Root and intermediate nodes only; present in root only if {\bf Names} isn't)
+an array of indiret references to the children of this node (either intermediate or leaf nodes).\cr
+Names&array&(Root and leaf nodes; present in root only if {\bf Kids} isn't)
+an array of the form
+$$ [{\it key}_1\ {\it value}_1\ \dots\ {\it key}_n\ {\it value}_n] $$
+where each ${\it key}_i$ is a string, and the ${\it value}_i$ is the associated value.
+The keys are sorted by lexical value as explained below.\cr
+Limits&array&(Intermediate and leaf nodes only) an array of two strings, specifying the lexically least and
+greatest keys included in the {\bf Names} array of a leaf node, or in the case of an intermediate node, the
+{\bf Names} of the children nodes.\cr
+\edicttable
+
+For example, we may have the following tree which describes the grades of students, say:
+\blisting
+1 0 obj     % root
+<<
+    /Kids
+      [ 2 0 R
+        3 0 R ]
+>>
+endobj
+
+2 0 obj     % intermediate
+<<
+    /Limits [(Andrew) (Gordon)]
+    /Kids
+      [ 4 0 R
+        5 0 R
+        6 0 R ]
+>> 
+endobj
+
+3 0 obj     % intermediate
+<<
+    /Limits [(Howard) (Zack)]
+    /Kids
+      [ 7 0 R
+        8 0 R ]
+>>
+endobj
+
+4 0 obj     % leaf
+<<
+    /Limits [(Andrew) (Avery)]
+    /Names
+      [ (Andrew) 100
+        (Avery) 80 ]
+>>
+endobj
+
+5 0 obj     % leaf
+<<
+    /Limits [(Bob) (Dylan)]
+    /Names
+      [ (Bob) 90
+        (Chris) 100
+        (Drew) 100
+        (Dylan) 60 ]
+>>
+endobj
+
+6 0 obj     % leaf
+<<
+    /Limits [(Fred) (Gordon)]
+    /Names
+      [ (Fred) 50
+        (Gordon) 85 ]
+>>
+endobj
+
+7 0 obj     % leaf
+<<
+    /Limits [(Howard) (Howard)]
+    /Names
+      [ (Howard) 10 ]
+>>
+endobj
+
+7 0 obj     % leaf
+<<
+    /Limits [(Zack) (Zack)]
+    /Names
+      [ (Zack) 70 ]
+>>
+endobj
+\elisting
+
+\subsubsection{Number trees}
+
+A number tree is similar to a name tree except that its keys are integers instead of strings, and are
+sorted in ascending numerical order.
+And instead of the key-value array being named {\bf Names}, it is named {\bf Nums}.
+
+\subsection{Functions}
+
+An important quote from the PDF reference:
+
+\rightline{``{\setfont{it}PDF is not a programming language, and a PDF file is not a program.}''}
+
+Despite this, PDF provides the ability to define certain kinds of functions.
+Though of course their use is limited and restricted.
+
+All PDF functions are pure functions ${\bb R}^m\to{\bb R}^n$ (pure meaning they have no side-effects).
+Importantly, their inputs and outputs must be numbers, not just any PDF datatype.
+PDF functions must have a domain defined in their definition.
+If a function has a domain of, say, $[-1,1]$ and is called with input $6$, the input will be clipped to the
+domain; so the function will be called with input $1$.
+Similarly some functions may define a range, and the output may be similarly clipped.
+
+A function may be either a dictionary or a stream.
+A {\it function dictionary} refers either directly to the function (if it is a dictionary) or to the stream
+dictionary (if it is a stream).
+The dictionary must provide a {\bf FunctionType} entry, which is one of $0,2,3,4$.
+For a function of type ${\bb R}^m\to{\bb R}^n$, the function dictionary may have the following fields
+(in addition to fields specific to the function type).
+
+\bdicttable
+FunctionType&integer&(Required) the function type.\cr
+Domain&array&(Required) an array of $2m$ numbers.
+For $0\leq i\leq m-1$, ${\bf Domain}_{2i}$ must be less than or equal to ${\bf Domain}_{2i+1}$.
+The domain of the function is
+$$ \prod_{0\leq i\leq m-1}[{\bf Domain}_{2i},{\bf Domain}_{2i+1}] $$\cr
+Range&array&(Required for type 0 and 4 functions, otherwise required) an array of $2n$ numbers.
+Similar to the domain, for every $0\leq i\leq n-1$, ${\bf Range}_{2i}\leq{\bf Range}_{2i+1}$.
+The range (codomain) of the function is
+$$ \prod_{0\leq i\leq n-1}[{\bf Range}_{2i},{\bf Range}_{2i+1}] $$\cr
+\edicttable
+
+\subsubsection{Type 0 (Sampled) Functions}
+
+Type 0 functions use a sequence of sampled values (which are contained in a stream) to approximate a function
+whose domain and range are both bounded.
+In addition to the fields already listed, the function dictionary of a type 0 function may include the
+following fields as well:
+
+\bdicttable
+Size&array&(Required) an array of $m$ positive integers which specifies the number of samples in each
+input dimension.\cr
+BitsPerSample&integer&(Required) the number of bits used to represent each sample.
+Valid values are $1,2,4,8,16,24,32$.\cr
+Order&integer&(Optional) the order of interpolation between samples.
+Valid values are $1$ and $3$, specifying linear and cubic spline interpolation, respectively.
+The default value is $1$.\cr
+Encode&array&(Optional) an array of $2m$ numbers specifying a linear mapping of input values into the domain
+of the function's sample table.
+The default value is $[0\ ({\bf Size}_0-1)\ 0\ ({\bf Size}_1-1)\ \dots]$.\cr
+Decode&array&(Optional) an array of $2n$ numbers specifying a linear mapping of sample values into the range
+appropriate appropriate for the function's output values.
+\edicttable
+
+\noindent The dictionary may include other fields common to stream objects.
+Given an input dimension of $m$, we must have $\prod_{0\leq i<m}{\bf Size}_i$ values in the stream.
+In order, these give the multi-dimensional array
+$$ g(0,\dots,0),g(1,\dots,0),\dots,g({\bf Size}_0-1,0,\dots,0),g({\bf Size}_0-1,1,\dots,0),\dots,
+g({\bf Size}_0-1,\dots,{\bf Size}_{m-1}-1) $$
+We now describe how to use $g$ to compute $f$, the type 0 function.
+
+To explain how the function is calculated, we first define the following function:
+$$ \interpolate(x;x_0,x_1,y_0,y_1) = y_0 + \left((x-x_0)\cdot\frac{y_1-y_0}{x_1-x_0}\right) $$
+this simply projects $x$ onto the line between $(x_0,y_0)$ and $(x_1,y_1)$.
+
+When a sampled function is called with input values $(x_0,\dots,x_{m-1})$, the following steps are taken in
+order to compute the result:
+\benum
+    \item Each $x_i$ is clipped to the domain:
+        $$ x'_i = \min(\max(x_i,\dom_{2i}),\dom_{2i+1}) $$
+    \item The input value is then encoded:
+        $$ e_i = \interpolate(x'_i;\dom_{2i},\dom_{2i+1},{\bf Encode}_{2i},{\bf Encode}_{2i+1}) $$
+        That is, given an input $x$, we project it onto the line whose endpoints are
+        $(\dom_{2i},{\bf Encode}_{2i})$ and $(\dom_{2i+1},{\bf Encode}_{2i+1})$.
+        The effect is that the lower end of the domain is mapped to ${\bf Encode}_{2i}$ and the higher end
+        is mapped to ${\bf Encode}_{2i+1}$.
+    \item Then the input value is clipped
+        $$ e'_i = \min(\max(e_i,0),{\bf Size}_i-1) $$
+        This gives us a real matrix $(e'_m,\dots,e'_{m-1})$ which is the encoding of the input vector.
+    \item We can then use interpolation (of order ${\bf Order}$) to compute $g(e')=r$.
+    \item We interpolate $r$ in order to decode it:
+        $$ r'_j = \interpolate(r_j;0,2^{\bf BitsPerSample}-1,{\bf Decode}_{2j},{\bf Decode}_{2j+1}) $$
+    \item And then we clip the output to the range:
+        $$ y_j = \min(\max(r'_j,\rng_{2j}),\rng_{2j+1}) $$
+        This gives us the output: $f(x)=y$.
+\eenum
+
+So for example, suppose we have a sampled function ${\bb R}^2\to{\bb R}$ whose domain is $[-1,1]^2$.
+The sampling contains $21$ columns and $31$ rows.
+So we must encode the input to $[0,20]\times[0,30]$, and then decode to $[-1,1]$.
+So the code will be
+
+\blisting
+14 0 obj
+<<
+    /FunctionType 0
+    /Domain [-1.0 1.0 -1.0 1.0]
+    /Size [21 31]
+    /Encode [0 20 0 30]
+    /BitsPerSample 4
+    /Range [-1.0 1.0]
+    /Decode [-1.0 1.0]
+    /Length ...
+>>
+stream
+... 651 sampled values ...
+endstream
+endobj
+\elisting
+
+\subsubsection{Type 2 (Exponential Interpolation) Functions}
+
+Type 2 functions are functions ${\bb R}\to{\bb R}^n$.
+Exponential interpolation is given by the following parameters $c_0,c_1\in{\bb R}^n$ and $N\in{\bb R}$.
+The value of the function at $x$ is
+$$ f(x;c_0,c_1,n) = c_0 + (c_1-c_0)x^N $$
+The interpretation of the parameters is as follows: $c_0,c_1$ are the values of $f$ at $x=0$ and $x=1$
+respectively.
+$N$ is the interpolation exponent, which dictates how the curve behaves.
+When $N=1$ this is simply linear interpolation.
+
+A type 2 function dictionary may include the following additional fields:
+
+\bdicttable
+C0&array&(Optional) an array of $n$ numbers, defining the parameter $c_0$.
+Its default value is $[0.0]$.\cr
+C1&array&(Optional) an array of $n$ numbers, defining the parameter $c_1$.
+Its default value is $[1.0]$.\cr
+N&number&(Required) the interpolation exponent.
+\edicttable
+
+The values of $\dom$ must constrain $x$ such that if $N$ is not an integer, $x\geq0$.
+And if $N$ is negative $x\neq0$.
+
+\subsubsection{Type 3 (Stitching) Functions}
+
+Type 3 functions define a stitching of $k$ one-input functions together.
+Suppose you're given a sequence of functions $f_0,\dots,f_{k-1}\colon{\bb R}\to{\bb R}^n$ with domains
+$[d_{00},d_{01}],\dots,[d_{k-1,0},d_{k-1,1}]$.
+Now we define another vector of {\it bounds}, ${\bf Bounds}=[b_0,\dots,b_{k-2}]$, so that if
+$b_{i-1}\leq x<b_i$ we want to input $x$ into $f_i$ ($b_{-1}$ and $b_{k-1}$ are the endpoints of the domain
+specified for $f$).
+But $[b_i,b_{i+1}]$ may not align with the domain of $f_i$ ($[d_{i0},d_{i1}]$), and we don't necessarily want
+it to anyway.
+So we now we want to linearly interpolate $[b_i,b_{i+1}]$ into $[d_{i0},d_{i1}]$.
+We do so by specifying two points $e_{i0},e_{i1}\in[d_{i0},d_{i1}]$ which will be the new endpoints.
+
+Explicitly, we have
+\benum
+    \item a new domain $[d_0,d_1]$;
+    \item $k$ one-input functions ${\bf Functions}=[f_0,\dots,f_{k-1}]$ each with a domain $[d_{i0},d_{i1}]$;
+    \item a vector of bounds ${\bf Bounds}=[b_0,\dots,b_{k-2}]$ (and define $b_{-1}=d_0$ and $b_{k-1}=d_1$);
+    \item a vector of encoding values ${\bf Encode}=[e_{00},e_{01},\dots,e_{k-1,0},e_{k-1,1}]$;
+\eenum
+and given an input value $x$, if $b_{i-1}\leq x<b_i$ (the right inequality is weak if $i=k-1$), then we
+compute $x'=\interpolate(x;b_{i-1},b_i,e_{i0},e_{i1})$.
+Then we output $f_i(x')$.
+
+Of course, the ranges of each $f_i$ must be compatible with the range specified for $f$ (if specified).
+
+\bdicttable
+Functions&array&(Required) the array of $k$ one-input functions to be stitched together.
+Each function must have the same output dimensionality $n$.\cr
+Bounds&array&(Required) the array of $k-1$ numbers determining the bounds for which to map into each function.%
+\cr
+Encode&array&(Required) the array of $2k$ numbers which determines the mapping of bounds into domains of each
+function.
+\edicttable
+
+Notice that if we have a function $f\colon{\bb R}\to{\bb R}^n$, and we want to compute $g(x)=f(1-x)$.
+We can compute this by defining $g$ as a stitching function, where the ${\bf Encode}$ array is $[1\ 0]$.
+
+\subsubsection{Type 4 (PostScript Calculator) Functions}
+
+A type 4 function utilizes a small subset of PostScript code to compute values.
+The following PostScript operators can be used in type 4 functions:
+
+\blist
+    \item Arithemtic operators: {\bf abs, cvi, floor, mod, sin, add, cvr, idiv, mul, sqrt, atan, div, ln,
+        neg, sub, ceiling, exp, log, round, truncate, cos}
+    \item Boolean and bitwise operators: {\bf and, false, le, not, true, bitshift, ge, lt, or, xor, eq, gt, ne}
+    \item Conditional operators: {\bf if, ifelse}
+    \item Stack operators: {\bf copy, exch, pop, dup, index, roll}
+\elist
+
+The operand syntax for type 4 functions follows PDF conventions rather than PostScript ones.
+The entire code defining the function must be wrapped in curly braces \inlinecode|{...}|.
+Braces are also used to delimit expressions executed conditionally in {\bf if} and {\bf ifelse} operators.
+
+I may later update this document to provide information on how to use PostScript operators (specifically in
+PDFs).
+

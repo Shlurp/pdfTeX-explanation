@@ -1,0 +1,45 @@
+\input pdfToolbox
+\input preamble
+
+\setlayout{horizontal margin=2cm, vertical margin=2cm}
+
+\bppbox{rgb{1 .8 .8}}{rgb{.5 0 0}}{rgb{.5 0 0}}
+\centerline{\setfontandscale{bf}{30pt}\vtop{\hsize=.8\hsize\leftskip=0pt plus1fill\rightskip=\leftskip
+\lineskiplimit=\z@ \lineskip=5pt%
+The Portable Document Format and pdf\TeX\par}}
+\medskip
+\centerline{\setfontandscale{it}{15pt}S. Lurp}
+\medskip
+\centerline{\setfontandscale{it}{15pt}\date}
+\eppbox
+
+\bigskip
+
+\section*{Table of Contents}
+
+\tableofcontents
+
+\vfill\break
+
+\section{Introduction}
+
+\input introduction
+
+\part{The Portable Document Format}
+
+\input the-portable-document-format
+
+\section{Datatypes and Functions}
+
+\input datatypes-and-functions
+
+\section{File Structure}
+
+\input file-structure
+
+\section{Graphics}
+
+\input graphics
+
+\bye
+

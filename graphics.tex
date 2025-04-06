@@ -1,0 +1,42 @@
+PDF provides support for drawing and including graphics.
+In this section we will cover the code for doing so, and later on we will discuss how to interact with this
+code through pdf\TeX.
+
+PDF inherits the postfix syntax from PostScript.
+This inheritance is entirely syntactical, as PDF does not support the concept of an argument stack or other
+features PostScript provides.
+
+PDF defines the following graphics objects for use within content streams:
+\blist
+    \item {\it path objects} are arbitrary shapes made up of straight lines, rectangles, and cubic B\'ezier
+    curves.
+    A path object ends with painting operators which indicate whether the path is opened or closed, stroked,
+    filled, etc.
+    \item {\it text objects} consist of one or more character strings that identify sequences of glyphs to be
+    painted.
+    It can also be stroked, filled, or used as a clipping boundary.
+    \item {\it external objects} (XObjects) are objects defined outside of the content stream, but can be
+    referenced from within the content stream through use of the stream's {\bf Resources}.
+    There are different kinds of XObjects:
+    \blist
+        \item {\it image XObjects} define a rectangular array of color samples to be painted;
+        \item {\it form XObjects} define an entire content stream to be treated as a single graphics object;
+        \item {\it reference XObjects} are a type of form XObject used to import content from one PDF into
+        another;
+        \item {\it group XObjects} are a type of form XObject used to group graphical elements together
+        (e.g. for use in the transparency model, which uses {\it transparency group XObjects}).
+    \elist
+    \item {\it inline image objects} use a special syntax to express data for a small image directly within
+    the content stream.
+    \item {\it shading objects} describes a geometric shape whose color is an arbitrary function of position
+    within the shape.
+\elist
+
+PDF 1.3 and early use an opaque imaging model, meaning that every object is painted in its entirety and at
+every point, only the object at the top has an effect on the color painted.
+PDF 1.4 and later use a transparent imaging model, meaning that objects may be specified to have a certain
+amount of transparency, so that objects underneath it may also affect the color painted.
+By default objects are painted as opaque.
+
+
+

@@ -1,0 +1,39 @@
+The Portable Document Format (PDF) is a file format developed by the Adobe corporation in $1992$ to render and
+display documents.
+It is a rich file format capable of displaying a diverse variety of documents, and its immense popularity has
+lead to its use around the world.
+Still today it is the leading format for displaying documents in a cross-platform manner.
+It has undergone various updates and standardizations, keeping it modern and usable.
+
+\TeX{} is a program and language for typesetting (generally academic) documents.
+Historically, it compiled to a {\tt dvi} (device independent) file format, but a more modern \TeX{} engine
+called pdf\TeX{} was developed to compile to PDF.
+\TeX{} includes a powerful macro-based programming layer, as well as a versatile typesetting engine.
+We assume basic knowledge of plain-\TeX{} for this article (if you don't know what plain-\TeX{} is, try reading
+the \TeX book by D. Knuth before this article).
+
+Despite the multitude of literature on PDF as well as \TeX, there exists little literature on pdf\TeX.
+Specifically, there does not exist much literature on how to utilize pdf\TeX-primitives to create PDF graphics.
+The pdf\TeX{} manual lists primitives, but does not give explanations on how to use them, and instead assumes
+intimate familiarity with PDF.
+In this article we will both explain PDF as well as how to utilize pdf\TeX{} primitives to create PDFs.
+
+We give thanks to the resources which were invaluable for this article:
+\blist
+    \item The \url{https://mirrors.rit.edu/CTAN/systems/doc/pdftex/manual/pdftex-a.pdf}{pdf\TeX{} manual} by
+    H\`an Th\^e\llap{\raise 0.5ex\hbox{\'{}}} Th\`anh and team;
+    \item The \url{https://opensource.adobe.com/dc-acrobat-sdk-docs/pdfstandards/pdfreference1.7old.pdf}
+    {PDF reference} by Adobe;
+    \item \url{https://petr.olsak.net/ftp/olsak/bulletin/pdfgrafika.pdf}
+    {Petr Ol\v s\'ak's article on pdf\TeX{} primitives};
+    \item The \url{https://ctan.mc1.root.project-creative.net/graphics/pgf/base/doc/pgfmanual.pdf}
+    {TikZ and PGF manual}, as well as PGF source code.
+\elist
+
+\subsection*{Structure of the article}
+
+This article will be split largely into two parts: an introduction to PDF, and an explanation of pdf\TeX{}
+primitives.
+The first part will not cover the entirety of the PDF, and we will leave certain subjects for the second part
+as well.
+

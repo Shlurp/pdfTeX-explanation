@@ -1,0 +1,167 @@
+\subsection{File structure}
+
+A ``canonical'' PDF file (pdf\TeX{} only creates canonical PDF files.
+PDF files can be updated to create non-canonical PDFs, but we will not deal with those)
+has the following structure:
+\benum
+    \item a one-line {\it header} which specifies the PDF version of the file;
+    \item a {\it body} containing all the objects which make up the file;
+    \item a {\it cross-reference stream} containing information regarding the indirect objects in the file;
+    \item a {\it trailer} which specifies the location of the cross-reference stream.
+\eenum
+
+For example, if we were to compile the following \TeX{} file:
+{\setsyntax{TeX}\listfile{hello-world.tex}}
+we'd get the following PDF:
+\listfile{hello-world.pdf}
+I have truncated the PDF to save space and increase readability, but we still end up with over a hundred lines.
+Oh well.
+
+Let's go over this file:
+
+\listfile{hello-world.pdf}[1-1]
+\noindent this is the header, it specifies that this file conforms to PDF version 1.5.
+
+Lines 3 through 96 comprise the body of the PDF file.
+
+Lines 97 through 111 comprise the cross-reference table.
+This contains information on how to randomly-access any indirect object within the file.
+This information (in PDF-1.5) is stored in the cross-reference stream (lines 108--110).
+The cross-reference stream is preceded by its stream dictionary, which may have the following fields:
+
+\bdicttable
+Type&name&(Required) the type of PDF object that the dictionary describes.
+Must be {\bf XRef}.\cr
+Size&integer&(Required; must not be indirect) the highest object number used in the file, plus one.\cr
+Root&dictionary&(Required; must be indirect) an indirect reference to the catalog of the PDF (see below).\cr
+Info&dictionary&(Optional; must be indirect) an indirect reference to the document's information dictionary.\cr
+ID&array&(Optional) an array of two byte-strings (hexadecimal strings) which uniquely identifies the file.\cr
+Index&array&(Optional) an array of two non-negative integers.
+The first is the first object number in the file; the second is the number of objects.
+The default value is then $[0\ {\bf Size}]$.\cr
+W&array&(Required) an array of integers corresponding to the size of the fields in a single cross-reference
+entry.
+We won't develop this further.
+\edicttable
+
+The cross reference stream in this file is
+\listfile{hello-world.pdf}[97-111]
+\noindent and the trailer, which just specifies the byte offset of the cross reference stream, is
+\listfile{hello-world.pdf}[112-114]
+
+\subsection{Document structure}
+
+\subsubsection{The document catalog}
+
+The {\bf Root} field in the file's cross-reference stream is an indirect reference to the document's
+{\it catalog}.
+The document catalog stores information for objects in the body of the file which define the document's
+content, outline, etc.
+It also contains information on how the document should be displayed.
+
+We see on line 103 that the {\bf Root} of the cross-reference stream is object {\tt10 0}.
+This is the document catalog:
+\listfile{hello-world.pdf}[89-93]
+\noindent We see that the document catalog is a dictionary, and here it only has two entries.
+But in general it can have more:
+
+\bdicttable
+Type&name&(Required) the type of PDF object the dictionary describes.
+Must be {\bf Catalog}.\cr
+Pages&dictionary&(Required; must be indirect) the {\it page tree node} (see below) that is the root of the
+document's {\it page tree} (see below).\cr
+PageLabels&number tree&(Optional) a number tree defining the page labeling for the document.
+The keys in the tree are page indicies, and the values are {\it page label dictionaries} (see below).\cr
+Dests&dictionary&(Optional) A dictionary of names and corresponding destinations (see below when we discuss
+hyperlinks).\cr
+URI&dictionary&(Optional) A dictionary containing information for URI actions (see below when we discuss
+hyperlinks).
+\edicttable
+
+\subsubsection{The page tree}
+
+The pages of a document are accessed through a structure known as the {\it page tree}.
+This defines the structure of the pages in a document.
+A page tree has two types of nodes: intermediate nodes and leaf nodes.
+The most simple structure would be a single root intermediate node which contains as children all the pages
+in the document as leaf nodes.
+This is not efficient, so instead the tree is kept balanced generally.
+
+A page tree node (intermediate node) is a dictionary with the following fields:
+
+\bdicttable
+Type&name&(Required) the type of PDF object that this dictionary describes.
+Must be {\bf Pages}.\cr
+Parent&dictionary&(Required except in root; must be indirect) a reference to the parent of the tree node.\cr
+Kids&array&(Required) an array of indirect references to the immediate children of the node.\cr
+Count&interger&(Required) the number of leaf nodes (page objects) that are descendants of this node.
+\edicttable
+
+Note that the page tree does not necessarily reflect the logical structure of the document (chapters, sections,
+etc.).
+
+A page object is a leaf in the page tree.
+It is a dictionary with the fields listed below.
+Some of the fields (those which are listed as such) may be inherited by ancestor nodes in the page tree.
+
+\bdicttable
+Type&name&(Required) the type of PDF object that this dictionary describes.
+Must be {\bf Page}.\cr
+Parent&dictionary&(Required; must be indirect) a reference to the parent of the page object in the page tree.
+\cr
+Resources&dictionary&(Required; inheritable) a dictionary containing any resources required by the page.
+Omitting this indicates that it should be inherited.\cr
+MediaBox&array&(Required; inheritable) an array of four numbers defining the boundaries of the page.\cr
+Contents&stream&(Optional) a {\it content stream} (see below) which contains the contents of the page.\cr
+Group&dictionary&(Optional) a {\it group attributes dictionary} specifying the attributes of the page's
+page group for use in transparency (see below).\cr
+Annots&array&(Optional) an array of {\it annotation dictionaries} representing annotations associated with
+the page (see below).
+\edicttable
+
+\noindent More fields exist, but we ignore them for the sake of brevity.
+In order to inherit an attribute, place it in a page tree node, and all page objects which are its descendants
+will inherit the attribute.
+
+We see in our document's catalog that the page tree root is object {\tt6 0}:
+\listfile{hello-world.pdf}[83-88]
+\noindent We see that there is a single page, whose object is {\tt2 0}:
+\listfile{hello-world.pdf}[43-50]
+\noindent The contents of the page are in object {\tt3 0}.
+This is a content stream, which is a stream with operators telling the renderer how to display the page:
+\listfile{hello-world.pdf}[3-13]
+\noindent and the resources of the page are in object {\tt1 0}:
+\listfile{hello-world.pdf}[51-55]
+\noindent The resources dictionary defines {\tt/F1} to be a font which is a reference to object {\tt4 0},
+which is a dictionary defining how to access the font.
+
+\subsubsection{Resource Dictionaries}
+
+Operands supplied to operators in content streams may only be direct objects.
+This places a heavy restriction that must be somehow overcome.
+For this reason, a content stream has a {\it resource dictionary}, defined by the {\bf Resources} entry
+associated with it, in one of the following ways:
+\blist
+    \item for a content stream that is the value of a page's {\bf Contents} entry, the resource dictionary
+    is named by the page's {\bf Resources} entry.
+    \item for other content streams, the stream dictionary's {\bf Resources} specifies the resource dictionary.
+    \item A form XObject (see below) may omit the {\bf Resources} entry, in which case the resources are looked
+    up in the {\bf Resources} entry of the page it is used in.
+\elist
+The entries in the {\bf Resources} dictionary are as follows (all fields are optional).
+All entries are explained in more depth in their respective sections below.
+
+\bdicttable
+ExtGState&dictionary&A dictionary that maps resource names to graphics state parameter dictionaries.\cr
+ColorSpace&dictionary&A dictionary that each resource names to either the name of a device-dependent color
+space or an array describing a color space (see below).\cr
+Pattern&dictionary&A dictionary that maps resource names to pattern objects (see below).\cr
+Shading&dictionary&A dictionary that maps resource names to shading dictionaries (see below).\cr
+XObject&dictionary&A dictionary that maps resource names to XObjects. (see below).\cr
+Font&dictionary&A dictionary that maps resource names to font dictionaries.\cr
+ProcSet&array&An array of predefined procedure set names.\cr
+Properties&dictionary&A dictionary that maps resource names to property list dictionaries for marked content.
+\edicttable
+
+Each field is explained in more depth later in this article.
+
