@@ -99,7 +99,7 @@
     \bgroup\tabskip=0pt plus1fil%
     \everycr={\noalign{\vskip2\jot}}%
     \halign to\hsize\bgroup\strut{#1 ##}\hfil\tabskip=1cm&{#2##}\hfil&%
-    \vtop{\hsize=.6\hsize\parindent=\z@#3##}\hfil\tabskip=0pt plus1fil\crcr
+    \vtop{\hsize=.55\hsize\parindent=\z@#3##}\hfil\tabskip=0pt plus1fil\crcr
 }
 \def\ethreetable{\crcr\noalign{\hrule}\egroup\egroup\par\medskip}
 
@@ -111,7 +111,6 @@
 
 \def\nattrans,{.996264 0 0 .996264 0 0 cm}
 
-
 \def\interpolate{\mathop{\rm Interpolate}}
 \def\frac#1#2{{{#1}\over{#2}}}
 \def\dom{{\bf Domain}}
@@ -121,6 +120,25 @@
 
 \loadsyntax{TeX}
 \loadsyntax{pdf}
+
+\def\circle#1#2#3{%
+    \_nopt{#1pt-#3pt} #2 m
+    \_nopt{#1pt-#3pt} \_nopt{#2pt+#3pt} #1 \_nopt{#2pt+#3pt} v
+    \_nopt{#1pt+#3pt} \_nopt{#2pt+#3pt} \_nopt{#1pt+#3pt} #2 v
+    \_nopt{#1pt+#3pt} \_nopt{#2pt-#3pt} #1 \_nopt{#2pt-#3pt} v
+    \_nopt{#1pt-#3pt} \_nopt{#2pt-#3pt} \_nopt{#1pt-#3pt} #2 v
+    h
+}
+\def\rcircle#1#2#3{%
+    \_nopt{#1pt-#3pt} #2 m
+    \_nopt{#1pt-#3pt} \_nopt{#2pt-#3pt} #1 \_nopt{#2pt-#3pt} v
+    \_nopt{#1pt+#3pt} \_nopt{#2pt-#3pt} \_nopt{#1pt+#3pt} #2 v
+    \_nopt{#1pt+#3pt} \_nopt{#2pt+#3pt} #1 \_nopt{#2pt+#3pt} v
+    \_nopt{#1pt-#3pt} \_nopt{#2pt+#3pt} \_nopt{#1pt-#3pt} #2 v
+    h
+}
+
+\def\place#1#2#3{\vbox to\z@{\vss\rlap{\hbox to#1pt{\hfil\vbox to#2pt{\hbox{#3}\vfil}}}}}
 
 \catcode`_=\ulineccode
 

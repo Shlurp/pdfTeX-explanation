@@ -1,4 +1,24 @@
 \pdfcompresslevel=0
-\nopagenumbers
-Hello world
+
+\immediate\pdfobj{
+[ /Pattern /DeviceRGB ]
+}
+\immediate\pdfobj stream attr{
+ /Type /Pattern 
+ /PatternType 1 % Tiling pattern 
+ /PaintType 2 % Colored
+ /TilingType 1
+ /BBox [0 0 101 101] 
+ /XStep 100 
+ /YStep 100 
+ /Resources << >>
+ /Matrix [1 0 0 1 0]
+}{
+q 1 w 0 0 30 30 re S Q
+}
+\expandafter\pdfpageresources\expanded{{/ColorSpace << /Cs1 [ /Pattern /DeviceRGB ] >> /Pattern << /P1 \the\pdflastobj\space 0 R >>}}
+\pdfliteral{q /Cs1 cs 0 1 1 /P1 scn 0 -100 100 -100 re B 0 0 1 /P1 scn 35 -70
+100 -100 re B Q}
+
 \bye
+

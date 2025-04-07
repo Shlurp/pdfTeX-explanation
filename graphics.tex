@@ -130,11 +130,11 @@ output is to be cropped.
 The initial value is the boundary of the entire imageable portion of the page.\cr
 color space&name or array&The current {\it color space} which determines how color values are to be
 interpreted (e.g. RGB).
-There are two separate color spaces: one for stroking and one for filling.
+There are two separate color spaces: one for stroking and one for non-stroking operations.
 The initial value is {\bf DeviceGray}.\cr
 color&(various)&The current color to be used when painting.
 The type and interpretation of the color depends on the current color space.
-There are two color parameters: one for stroking and one for filling.
+There are two color parameters: one for stroking and one for non-stroking operations.
 The initial value is black.\cr
 text state&(various)&A set of nine graphics state parameters that affect the painting of text (see below).\cr
 line width&number&The thickness, in user space units, of paths to be stroked.
@@ -157,7 +157,7 @@ This parameter is reset to its initial value at the beginning of execution of a 
 Initial value: {\bf None}.\cr
 alpha constant&number&The constant shape or constant opacity value to be used in the transparent imaging
 model.
-There are two alpha constant parameters: one for stroking and another for filling.
+There are two alpha constant parameters: one for stroking and another for non-stroking operations.
 This parameter is reset to its initial value at the beginning of execution of a transparency group XObject.
 Initial value: $1.0$.\cr
 alpha source&boolean&A flag specifying whether the current soft mask and alpha constant parameters are to be
@@ -274,3 +274,415 @@ phase, the stroking of the phase begins.
 [2 1] 0&\showdash{[2 1] 0}&2 on, 1 off, 2 on,\dots\cr
 [3 5] 6&\showdash{[3 5] 6}&2 off, 3 on, 5 off,\dots
 \ethreetable
+
+\subsubsection{Graphics state operators}
+
+We list the operators which can be used to alter the graphics state.
+Like all PDF operators, they are postfix.
+
+\bthreetable{\it}{\bf}{}
+{\bf Operands}&{\bf Operator}&{\bf Description}\cr\noalign{\hrule\vskip2\jot}
+---&q&Push the current graphics state onto the state stack.\cr
+---&Q&Pop from the state stack into the current graphics state.\cr
+a b c d e f&cm&Modify the current transformation matrix (CTM) by multiplying with the matrix
+$$ \pmatrix{a&b&0\cr c&d&0\cr e&f&1} . $$\cr
+lineWidth&w&Sets the line width.\cr
+lineCap&J&Sets the line cap style according to the provided code.\cr
+lineJoin&j&Sets the line join style according to the provided code.\cr
+miterLimit&M&Sets the miter limit.\cr
+dashArray dashPhase&d&Set the line dash pattern in the graphics state.\cr
+dictName&gs&Set the specified parameters in the grapgics state.
+{\it dictName} is the name of a graphics state dictionary in the {\bf ExtGState} subdictionary of the current
+{\bf Resources} dictionary.
+\ethreetable
+
+As written, you can use the {\bf gs} to alter the graphics state.
+This is by providing the name of a graphics state parameter dictionary which is provided in the
+{\bf ExtGState} field of the current {\bf Resources} dictionary.
+Graphics state parameter dictionaries may have the following fields (all fields are optional):
+
+\bdicttable
+Type&name&The type of PDF object that this dictionary describes; must be {\bf ExtGState}.\cr
+LW&number&The line width.\cr
+LC&integer&The line cap code.\cr
+LJ&integer&The line join code.\cr
+ML&number&The miter limit.\cr
+D&array&The line dash pattern, expressed as an array of the form $[{\it dashArray}\ {\it dashPhase}]$ where
+{\it dashArray} is itself an array.\cr
+Font&array&An array of the form $[{\it font}\ {\it size}]$, where {\it font} is an indirect reference to a
+font dictionary and {\it size} is a number expressed in text space units for the font size.
+These can also be altered by the {\bf Tf} operator (see below).\cr
+BM&name or array&The current blend mode to be used in the transparent imaging model (see below).\cr
+SMask&dictionary or name&The current soft mask, which specifies the mask shape or mask opacity values to be
+used in the transparent imaging model.\cr
+CA&number&The current stroking alpha constant, specifying the shape or constant opacity value to be used for
+stroking operations in the transparent imaging model.\cr
+ca&number&Same as {\bf CA} but for non-stroking operations.\cr
+AIS&boolean&The alpha source flag (``alpha is shape''), which specifies whether the current soft mask and alpha
+constant are to be interpreted as shape values ({\bf true}) or opacity values ({\bf false}).\cr
+TK&boolean&The text knockout flag, which determines the behavior of overlapping glyphs within a text object in
+the transparent imaging model.
+\edicttable
+
+For example, we may have the single-page PDF:
+
+\blisting
+10 0 obj % the page object
+<<
+    /Type /Page
+    /Parent 5 0 R
+    /Resources 20 0 R
+    /Contents 40 0 R
+>>
+endobj
+
+20 0 obj % resource dictionary for the page
+<<
+    /ProcSet [/PDF /Text]
+    /Font << /F1 25 0 R >>
+    /ExtGState <<
+        /GS1 30 0 R
+        /GS2 35 0 R
+    >>
+>>
+endobj
+
+30 0 obj % first graphics state
+<<
+    /Type /ExtGState
+    /LW .3
+    /D [[3] 0]
+>>
+endobj
+
+35 0 obj % second graphics state
+<<
+    /Type /ExtGState
+    /LC 1
+    /LJ 1
+    /LW 1
+>>
+endobj
+
+40 0 obj % contents of the page
+<<
+    /Length ...
+>>
+stream
+q
+/GS1 gs
+0 0 m 10 0 l S
+/GS2 gs
+0 -5 m 10 -5 l S
+Q
+endstream
+endobj
+\elisting
+
+We have two graphics states, {\bf GS1} and {\bf GS2}, which both alter the graphics state to change how lines
+are drawn.
+We now discuss the code for drawing paths.
+
+\subsection{Path construction and painting}
+
+Paths define the boundaries of areas within the PDF.
+They can be stroked to draw the boundaries of shapes, or filled, or added to the current clipping path in order
+to crop material on the page.
+
+A path is made up of one or more disconnected subpaths, each of which is a sequence of connected segments,
+which are lines or curves.
+Two segments are connected only if they are defined consecutively: if you define a line from $(0,0)$ to
+$(10,0)$, then a line to $(10,10)$, the two lines are connected.
+But if between those two lines you draw another line, they are not connected.
+This is not entirely true: a subpath may be closed, that is the first and last segments may be connected by the
+use of a special operator.
+
+There are three types of path operators:
+\benum
+    \item {\it path construction operators} which define the geometry of the path;
+    \item {\it path painting operators} which define how the path should be painted and/or stroked;
+    \item {\it clipping path operators} which say if a path should be added to the current clipping area.
+\eenum
+
+\subsubsection{Path construction operators}
+
+\bthreetable{\it}{\bf}{}
+{\bf Operands}&{\bf Operator}&{\bf Description}\cr\noalign{\hrule\vskip2\jot}
+x y&m&Begin a new subpath by moving the current point to coordinate $(x,y)$ in user space.\cr
+x y&l&Append a line from the current point to $(x,y)$ in the current subpath.
+The new current point is $(x,y)$.\cr
+$x_1\ y_1\ x_2\ y_2\ x_3\ y_3$&c&Append a cubic B\'ezier curve to the current subpath.
+The curve extends from the current point to $(x_3,y_3)$ using $(x_1,y_1)$ and $(x_2,y_2)$ as control points.\cr
+$x_2\ y_2\ x_3\ y_3$&v&Append a cubic B\'ezier curve to the current subpath.
+The curve extends from the current point to $(x_3,y_3)$ using the current point and $(x_2,y_2)$ as control
+points.\cr
+$x_1\ y_1\ x_3\ y_3$&y&Append a cubic B\'ezier curve to the current subpath.
+The curve extends from the current point to $(x_3,y_3)$ using $(x_1,y_1)$ and $(x_3,y_2)$ as control
+points.\cr
+---&h&CLose the current subpath by appending a straight line segment from the current point to the starting
+point of the subpath.
+This terminates the current subpath.\cr
+x y width height&re&Append a rectangle to the current path as a complete subpath.
+\ethreetable
+
+\noindent Doing
+\blisting
+x y width height re
+\elisting
+\noindent is equivalent to
+\blisting
+x y m
+(x + width) y l
+(x + width) (y + height) l
+x (y + height) l
+h
+\elisting
+
+\subsubsubsection{Cubic B\'ezier curves}
+
+Curved path segments are defined using {\it cubic B\'ezier curves}.
+B\'ezier curves are useful since they can be scaled, and subpaths are also B\'ezier curves, which makes them
+very useful in computer graphics.
+
+A cubic B\'ezier curve is defined by four points: beginning and end points $p_0,p_3$, as well as two control
+points $p_1,p_2$.
+Given these points, the cubic B\'ezier curve is parameterized by
+$$ {\bf B}(t) = (1-t)^3p_0 + 3t(1-t)^2p_1 + 3t^2(1-t)p_2 + t^3p_3 $$
+Note that ${\bf B}(0)=p_0$ and ${\bf B}(1)=p_1$, so this defines a curve between $p_0$ and $p_1$.
+${\bf B}$ generally does not intersect $p_1,p_2$, but it always lies within the convex hull of the four points.
+Another big reason for the use of B\'ezier curves is that changing the control points can {\it intuitively}
+alter the curvature of the curve.
+
+\bgroup
+\centerline{%
+\hbox to300pt{\vrule width\z@ height200pt depth\z@%
+    \place{15}{0}{$p_0$}%
+    \place{45}{150}{$p_1$}%
+    \place{195}{150}{$p_2$}%
+    \place{295}{50}{$p_3$}%
+    \pdfliteral{q
+        \nattrans,
+        0 0 m
+        50 150 200 150 300 50 c S
+        q
+        [5] 0 d
+        0 0 m
+        50 150 l S
+        300 50 m
+        200 150 l S
+        Q
+        .3 w
+        \circle{0}{0}{2} f
+        \circle{50}{150}{2} f
+        \circle{200}{150}{2} f
+        \circle{300}{50}{2} f
+    Q}%
+\hfil}}
+\egroup
+
+\bigskip
+
+The above figure demonstrates a useful property of B\'ezier curves: the lines $p_0p_1$ and $p_2p_3$ are
+tangent to the curve!
+This helps explain how they can intuitively alter the curvature of the curve.
+
+\subsubsection{Path painting operators}
+
+We now describe the operators which can be used for painting (stroking and filling) paths:
+
+\bthreetable{\it}{\bf}{}
+{\bf Operands}&{\bf Operator}&{\bf Description}\cr\noalign{\hrule\vskip2\jot}
+---&S&Stroke the path.\cr
+---&s&Close and stroke the path.
+Equivalent to {\tt h S}.\cr
+---&f&Fill the path, using the nonzero winding number rule to determine the region to fill (see below).
+All open subpaths are implicitly closed.\cr
+---&f*&Same as {\bf f}, except using the even-odd rule.\cr
+---&B&Fill then stroke the path, using the nonzero winding number rule.\cr
+---&B*&Fill and then stroke the path, using the even-odd rule.\cr
+---&b&Close, fill, then stroke the path, using the nonzero winding number rule.
+(The closing affects only the stroking.)\cr
+---&b*&Same as {\bf b} except using the even-odd rule.\cr
+---&n&End the path without stroking or filling it.
+\ethreetable
+
+\subsubsubsection{The nonzero winding number rule}
+
+The {\it nonzero winding number rule} determines whether a given point is inside the path by drawing a ray
+from the given point to infinity in every direction.
+For each ray, we count how many times the ray intersects the path.
+When it intersects the path as it is going left-to-right, it adds one; and when it intersects the path as it
+is going right-to-left, it subtracts one.
+If the result is zero (for any ray), the point is outside the path; otherwise it is inside.
+
+Instead of doing this for every ray, an arbitrary ray is chosen.
+
+For convex shapes, this defines the inside and outside as you'd expect.
+For more complicated boundaries, such as those which intersect themselves, we can get weirder results.
+For example the five-point star:
+
+\bgroup
+\centerline{%
+\hbox to191pt{\vrule width\z@ height181pt depth\z@%
+    \pdfliteral{q
+        .6 g 0 G
+        1 j 1 J
+        \nattrans,
+        191 111 m
+        37 0 l
+        96 181 l
+        154 0 l
+        0 111 l b
+    Q}%
+\hfil}}
+\egroup
+
+\bigskip
+
+And if we draw a donut shape, the direction we choose to draw it matters.
+For example, if both circles are drawn in the same direction we get the left, but if they are drawn in opposite
+directions, we get the right:
+
+\bigskip
+
+\bgroup
+\centerline{%
+\hbox to300pt{\vrule width\z@ height100pt depth\z@%
+    \pdfliteral{q
+        .6 g 0 G
+        1 j 1 J
+        \nattrans,
+        \circle{50}{50}{50}
+        \circle{50}{50}{30} b
+        \circle{250}{50}{50}
+        \rcircle{250}{50}{30} b
+    Q}%
+\hfil}}
+\egroup
+
+\bigskip
+
+\subsubsubsection{The even-odd rule}
+
+The even-odd rule is similar to the nonzero winding number rule.
+Similar to the nonzero winding number rule, a ray is drawn in any direction from the point, and the number of
+intersections is counted (without any subtractions).
+If the number is odd, the point is inside; and if it is even, outside.
+
+For convex shapes, this produces the same result as the nonzero winding number rule.
+But for more complicated shapes, it produces different shapes:
+
+\bigskip
+
+\bgroup
+\centerline{%
+\hbox to191pt{\vrule width\z@ height181pt depth\z@%
+    \pdfliteral{q
+        .6 g 0 G
+        1 j 1 J
+        \nattrans,
+        191 111 m
+        37 0 l
+        96 181 l
+        154 0 l
+        0 111 l b*
+    Q}%
+\hfil}\kern100pt%
+\hbox to100pt{\vrule width\z@ height100pt depth\z@%
+    \pdfliteral{q
+        .6 g 0 G
+        1 j 1 J
+        \nattrans,
+        \circle{50}{50}{50}
+        \circle{50}{50}{30} b*
+    Q}%
+\hfil}%
+}
+\egroup
+
+\subsubsection{Clipping path operators}
+
+The graphics state contains a {\it current clipping path} which defines a boundary of a shape through which
+painting operators are cropped.
+Anything outside the boundary is cropped from the page.
+The initial current clipping path includes the entire page.
+After constructing a path and before painting it, a clipping operator ({\bf W} or {\bf W*}) may be added.
+The clipping path is altered to be the intersection of the path with the current clipping path, and this is
+done only after the path is painted.
+
+\bthreetable{}{\bf}{}
+{\bf Operands}&{\bf Operator}&{\bf Description}\cr\noalign{\hrule\vskip2\jot}
+---&W&Modify the current clipping path by intersecting it with the current path, using the nonzero winding
+number rule to determine what areas lay inside and outside the path.\cr
+---&W*&Like {\bf W}, except it uses the even-odd rule.
+\ethreetable
+
+In order to alter the clipping path without painting a path, one can use the {\bf n} operator, which just
+terminates the path without painting it.
+So for example, one could do:
+
+\blisting \setsyntax{TeX}
+\pdfliteral{q}\rlap{\pdfliteral{0 0 100 4 re W n}hello}\pdfliteral{Q}
+\elisting
+
+\noindent(\macro\pdfliteral{} injects PDF code into the document, we'll discuss this later.)
+This will write ``hello'', but only the coordinates which fall inside the rectangle of height 4.
+This results in:
+
+\pdfliteral{q}\rlap{\pdfliteral{0 0 100 4 re W n}hello}\pdfliteral{Q}
+
+\bigskip
+
+\noindent It's important to push the color state before setting the clipping path and pop after you've done
+your clipping.
+Otherwise all subsequent material will also be cropped.
+
+\subsection{Color Spaces}
+
+PDF provides the ability to input color in multiple ways.
+For example, it supports both RGB and CMYK color spaces.
+The current color space dictates the colors used for stroking and non-stroking operations (there exists
+separate color spaces for each).
+
+To provide a color, first a color space must be given.
+We will discuss only the {\it device color spaces} now, and later we will discuss some {\it special color
+spaces}.
+There are three device color spaces: {\bf DeviceGray}, {\bf DeviceRGB}, and {\bf DeviceCMYK}.
+
+{\bf DeviceGray} uses only shades of gray, which range between $0.0$ and $1.0$.
+{\bf DeviceRGB} uses combinations of red, green, and blue whose values range between $0.0$ and $1.0$ to
+produce color.
+Similarly {\bf DeviceCMYK} uses combination of cyan, magenta, yellow, and black whose values range between
+$0.0$ and $1.0$.
+Importantly, RGB is an additive color system (it mixes light), and CMYK is subtractive (it mixes material;
+adding colors makes it darker).
+
+We can use the {\bf CS} and {\bf cs} operators to change the stroking and non-stroking color spaces
+respectively.
+Their only input is the name of a color space ({\bf DeviceGray}, {\bf DeviceRGB}, {\bf DeviceCMYK}).
+Then to set the actual color value, one uses {\bf SC} or {\bf sc} to set the color.
+Their input is a stream of numbers which corresponds to a color value.
+For example, in the {\bf DeviceRGB} color space the stream must have $3$ numbers, while in the {\bf DeviceCMYK}
+color space it must have $4$.
+
+To summarize:
+
+\bthreetable{\it}{\bf}{}
+{\bf Operands}&{\bf Operator}&{\bf Description}\cr\noalign{\hrule\vskip2\jot}
+name&CS&Sets the current color space for stroking operations.
+{\it name} must be a name object ({\bf DeviceGray}, {\bf DeviceRGB}, or {\bf DeviceCMYK}).\cr
+name&cs&Sets the current color space for non-stroking operations.
+{\it name} must be a name object.\cr
+$c_1\ \dots\ c_n$&SC&Set the color to be used for stroking operations.
+Each value $c_i$ must be a number between $0.0$ and $1.0$.
+The number of operators $n$ depends on the current color space: $1$ for {\bf DeviceGray}, $3$ for
+{\bf DeviceRGB}, $4$ for {\bf DeviceCMYK}.\cr
+$c_1\ \dots\ c_n$&sc&Same as {\bf SC} but for non-stroking operations.\cr
+gray&G&The same as doing {\tt /DeviceGray CS} followed by {\it gray \tt SC}.\cr
+gray&g&The same as doing {\tt /DeviceGray cs} followed by {\it gray \tt sc}.\cr
+r g b&RG&The same as doing {\tt /DeviceRGB CS} followed by {\it r g b \tt SC}.\cr
+r g b&rg&The same as doing {\tt /DeviceRGB cs} followed by {\it r g b \tt sc}.\cr
+c m y k&K&The same as doing {\tt /DeviceCMYK CS} followed by {\it c m y k \tt SC}.\cr
+c m y k&k&The same as doing {\tt /DeviceCMYK cs} followed by {\it c m y k \tt sc}.\cr
+\ethreetable
+
