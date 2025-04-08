@@ -1,2 +1,788 @@
 This section should probably belong to the ``Graphics'' section; but it's a big enough of a concept that I
 (and hopefully you) will let letting it have its own section slide.
+A pattern is a repeating graphical figure or smooth gradient used to fill regions of space.
+Take for example the two patterns below:
+
+\immediate\pdfobj stream attr{
+    /Type /Pattern
+    /PatternType 1
+    /PaintType 1
+    /TilingType 1
+    /BBox [0 0 20 20] 
+    /XStep 20
+    /YStep 20
+    /Resources << >>
+}{
+    q
+    1 0 0 rg 0 0 10 10 re 10 10 10 10 re f
+    0 0 .5 rg 10 0 10 10 re 0 10 10 10 re f
+    Q
+}
+
+\bigskip
+\bgroup\setbox0=\hbox to150pt{\vrule width\z@ height100pt depth\z@%
+\pdfliteral{%
+    q
+    \nattrans,
+    .5 0 0 .5 0 0 cm
+    1 j 1 J
+    /Pattern cs
+    /P scn
+    0 100 m
+    25 150 100 200 150 200 c
+    200 150 250 150 300 100 c
+    275 50 250 0 y
+    200 0 175 0 150 50 c
+    125 50 100 50 0 100 c
+    h
+    B
+    Q
+}\hfil}
+\pdfxform resources{%
+    /ColorSpace << /CSP [ /Pattern /DeviceRGB ] >>
+    /Pattern << /P \the\pdflastobj\space 0 R >>
+}0
+\edef\A{\the\pdflastxform}
+\setbox0=\hbox to150pt{\vrule width\z@ height100pt depth\z@%
+\pdfliteral{%
+    q
+    \nattrans,
+    .5 0 0 .5 0 0 cm
+    1 j 1 J
+    /P scn
+    0 100 m
+    25 150 100 200 150 200 c
+    200 150 250 150 300 100 c
+    275 50 250 0 y
+    200 0 175 0 150 50 c
+    125 50 100 50 0 100 c
+    h
+    B
+    Q
+}\hfil}%
+\pdfxform resources{%
+    /Pattern << /P <<
+        /Type /Pattern
+        /PatternType 2
+        /Shading <<
+            /ShadingType 2 /ColorSpace /DeviceRGB /Domain [0 1] /Coords [0 0 150 0]
+            /Function << /FunctionType 2 /Domain [0 1] /C0 [1 0 0] /C1 [0 0 .5] /N 1 >>
+            /Extend [false false]
+        >>
+    >> >>
+}0
+\centerline{\pdfrefxform\A\hfil\pdfrefxform\pdflastxform}\egroup
+\bigskip
+
+There are two types of patterns:
+\benum
+    \item {\it Tiling patterns} which repeat a small graphical figure (a {\it pattern cell}) over fixed
+    horizontal and vertical intervals to fill the area to be painted.
+    (The above left example is one of a tiling pattern.)
+    \item {\it Shading patterns} form a gradient that smoothly transitions between colors and fills the area
+    to be painted.
+    (The above right example is one of a shading pattern.)
+\eenum
+
+Every pattern has a {\it pattern matrix}, which is a transformation matrix which maps the pattern's internal
+coordinate system to the default coordinate system of the pattern's parent content stream (the content stream
+from which the pattern was called).
+The multiplication of the pattern matrix with the transformation matrix of the parent content stream
+establishes the {\it pattern coordinate space}.
+Importantly this is the multiplication of the transformation matrix of the parent stream, and not the CTM.
+Thus after a pattern is defined in the resources of a content stream, its pattern coordinate space is not
+affected by changes to the CTM.
+
+\subsection{Tiling patterns}
+
+A tiling pattern takes a small graphical figure, called the {\it pattern cell}, and repetitively paints it
+horizontally and vertically.
+The pattern cell is a content stream which may contain anything a content stream can contain (paths, images,
+XObjects, etc.).
+When painting using a tiling pattern, the pattern cell is tiled as many times as needed to fill the region
+specified.
+
+A pattern cell is is defined by a content stream, and thus has a stream dictionary.
+Along with fields common to all stream dictionaries, a pattern dictionary may have the following fields:
+
+\bgroup
+\expandafter\def\csname enumstyle1\endcsname#1{#1}
+\bdicttable
+Type&name&(Optional) the type of PDF object the dictionary describes; must be {\bf Pattern}.\cr
+PatternType&integer&(Required) a code identifying what kind of pattern this dictionary describes.
+Must be $1$ for a tiling pattern.\cr
+PaintType&integer&(Required) a code that determines how the color of the pattern cell is to be specified:
+\benum
+    \item {\it Colored tiling pattern}: the pattern's content stream specifies the colors to be used to paint
+    the pattern cell.
+    When the pattern cell's content stream begins execution, the current color is the one that was in effect
+    in the parent content stream.
+    \item {\it Uncolored tiling pattern}: the pattern's content stream does not specify any color information.
+    Instead, the entire pattern cell is painted a separately specified color each time the pattern is used.
+\eenum\cr
+TilingType&integer&(Required) a code that controls adjustments to the spacing of tiles relative to the
+device pixel grid:
+\benum
+    \item {\it Constant spacing}: pattern cells are spaced consistently, i.e. by a miltiple of a device pixel.
+    To achieve this, the application may distort the pattern cell slightly by making small adjustments to
+    {\bf XStep}, {\bf YStep}, and the transformation matrix.
+    This distortion does not exceed one device pixel.
+    \item {\it No distortion}: the pattern cell is not distorted, but the spacing between the pattern cells
+    may vary by as much as one device pixel.
+    \item {\it Constant spacing and faster tiling}: pattern cells are spaced consistently as with {\it constant
+    spacing}, but additional distortion is permitted to enable faster tiling.
+\eenum\cr
+BBox&array&(Required) an array of four numbers specifying the bottom left and top right corners of the bounding
+box of the pattern cell.
+That is, {\bf BBox} is of the form $[x_0\ y_0\ x_1\ y_1]$ where $(x_0,y_0)$ is the bottom left corner of the
+pattern cell (relative to its own coordinates), and $(x_1,y_1)$ is the top right corner.\cr
+XStep&number&(Required) the desired horizontal spacing between pattern cells, measured in the pattern
+coordinate system.\cr
+YStep&number&(Required) the desired vertical spacing between pattern cells, measured in the pattern
+coordinate system.\cr
+Resources&dictionary&(Required) a resource dictionary containing all the named resources used by the pattern's
+content stream.\cr
+Matrix&array&(Optional) an array of six numbers representing the pattern matrix.
+\edicttable
+\egroup
+
+We use the following operators to paint with patterns:
+
+\bthreetable{\it}{\bf}{}
+{\bf Operands}&{\bf Operator}&{\bf Description}\cr
+$c_1\dots c_n\ {\it name}$&SCN&Sets the current pattern to be stroked, if the current color space is
+{\bf Pattern}, or if {\it name} refers to a shading pattern.
+{\it name} must refer to a pattern defined in the {\bf Pattern} subdictionary of the current resource
+dictionary.
+If this is an uncolored tiling pattern ({\bf PatternType} of $1$ and {\bf PaintType} of $2$), $c_1,\dots,c_n$
+are parameters in the specified underlying color space (see below) which set the color to use for the tiling.
+\cr
+$c_1\dots c_n\ {\it name}$&scn&Same as {\bf SCN} but for non-stroking operations.
+\ethreetable
+
+For example, to draw the colored tiling pattern at the beginning of the section, the following PDF code was
+produced:
+
+\noindent First we have the pattern object, which defines the pattern cell and necessary data for tiling:
+
+\blisting
+1 0 obj
+<<
+    /Type /Pattern      % pattern dictionary
+    /PatternType 1      % tiling pattern
+    /PaintType 1        % colored tiling pattern
+    /TilingType 1       % constant spacing
+    /BBox [0 0 20 20]   % bounding box
+    /XStep 20           % xstep and ystep are precisely
+    /YStep 20           % the size of the pattern cell
+    /Resources << >>    % no resources
+    /Length 84
+>>
+stream
+q
+1 0 0 rg                        % set color to red
+0 0 10 10 re 10 10 10 10 re f   % draw the two red rectangles
+0 0 .5 rg                       % set color to blue
+10 0 10 10 re 0 10 10 10 re f   % draw the two blue rectangles
+Q 
+endstream
+endobj
+\elisting
+
+\noindent Then we have the content stream (which here is an XObject) in which the pattern is painted.
+
+\blisting
+2 0 obj
+<<
+/Type /XObject              % fields for the XObject...
+/Subtype /Form
+/BBox [0 0 149.44 99.626]
+/FormType 1
+/Matrix [1 0 0 1 0 0]
+/Resources 9 0 R            % resources are in object 9 0
+/Length 193       
+>>
+strea
+q
+.996264 0 0 .996264 0 0 cm  % this will be explained later
+.5 0 0 .5 0 0 cm            % scale down by half
+1 j 1 J                     % rounded lines
+/Pattern cs                 % set current non-stroking color space to be a pattern
+/P scn                      % set the current non-stroking pattern
+0 100 m                     % draw the region to paint...
+25 150 100 200 150 200 c
+200 150 250 150 300 100 c
+275 50 250 0 y
+200 0 175 0 150 50 c
+125 50 100 50 0 100 c
+h
+B                           % fill
+Q 
+endstream
+endobj
+\elisting
+
+\noindent The resources for this XObject are in object {\tt9 0}.
+This object must define the name {\tt/P}.
+Indeed it does:
+
+\blisting
+% 9 0 obj
+<<
+    /Pattern << /P 1 0 R >> 
+    /ProcSet [ /PDF ]
+>>
+\elisting
+
+\noindent So {\tt/P} is the pattern defined in object {\tt1 0}.
+
+For a uncolored tiling pattern, we must also specify what color we want to paint it with.
+So when we call {\bf CS} or {\bf cs}, we need to tell PDF that we're switching to a {\bf Pattern} color space,
+as well as the underlying color space (e.g. {\bf DeviceRGB}).
+Then when we call {\bf SCN} or {\bf scn}, we need to tell PDF what color we want to paint the pattern with.
+For example, suppose we have the following uncolored pattern:
+
+\bigskip
+\immediate\pdfobj stream attr{
+    /Type /Pattern
+    /PatternType 1
+    /PaintType 2
+    /TilingType 1
+    /BBox [0 0 10 10] 
+    /XStep 10
+    /YStep 10
+    /Resources << >>
+}{
+    5 10 m
+    0 5 l 5 0 l 10 5 l h
+    5 7.5 m
+    2.5 5 l 5 2.5 l 7.5 5 l h
+    f*
+}
+
+\bgroup\setbox0=\hbox to150pt{\vrule width\z@ height100pt depth\z@%
+\pdfliteral{%
+    q
+    \nattrans,
+    1 j 1 J
+    /CSP cs
+    1 0 0 /P scn
+    0 0 150 100 re
+    B
+    Q
+}\hfil}
+\pdfxform resources{%
+    /ColorSpace << /CSP [ /Pattern /DeviceRGB ] >>
+    /Pattern << /P \the\pdflastobj\space 0 R >>
+}0
+\centerline{\pdfrefxform\pdflastxform}\egroup
+\bigskip
+
+The pattern cell here is simply a hollowed-out diamond.
+The PDF code for the pattern cell is as follows:
+
+\blisting
+1 0 obj
+<<
+    /Type /Pattern          % pattern cell
+    /PatternType 1          % tiling pattern
+    /PaintType 2            % uncolored tiling pattern
+    /TilingType 1           % constant spacing
+    /BBox [0 0 10 10]       % bounding box
+    /XStep 10               % xstep and ystep are precisely
+    /YStep 10               % the size of the pattern cell
+    /Resources << >>        % no resources
+    /Length 66        
+>>
+stream
+5 10 m
+0 5 l 5 0 l 10 5 l h        % draw outer diamond
+5 7.5 m
+2.5 5 l 5 2.5 l 7.5 5 l h   % draw inner diamond
+f*                          % fill using even-odd
+                            % (so that the diamond is hollowed out)
+endstream
+endobj
+\elisting
+
+\noindent The code which draws the pattern is as follows:
+
+\blisting
+2 0 obj
+<<
+    /Type /XObject
+    /Subtype /Form
+    /BBox [0 0 149.44 99.626]
+    /FormType 1
+    /Matrix [1 0 0 1 0 0]
+    /Resources 9 0 R
+    /Length 78        
+>>
+stream
+q
+.996264 0 0 .996264 0 0 cm      % to be explained later
+1 j 1 J                         % rounded lines
+/CSP cs                         % set color space to /CSP
+1 0 0 /P scn                    % set pattern to /P with color 1 0 0
+0 0 150 100 re                  % draw rectangle
+B                               % and fill
+Q 
+endstream
+endobj
+\elisting
+
+\noindent We see that here we set the (non-stroking) color space to a name {\bf CSP}.
+This name is defined in the resource dictionary, in object {\tt9 0}:
+
+\blisting
+% 9 0 obj
+<<
+    /ColorSpace << /CSP [ /Pattern /DeviceRGB ] >>
+    /Pattern << /P 1 0 R >> 
+    /ProcSet [ /PDF ]
+>>
+\elisting
+
+\noindent Here {\bf CSP} is defined to be a {\bf ColorSpace}.
+But instead of being defined as a name like {\bf DeviceRGB}, it is defined to be an array of two names:
+{\bf Pattern} and {\bf DeviceRGB}.
+This is because since {\bf P} is an uncolored tiling pattern, we must specify the color to color it with.
+In object {\tt2 0}, we specified the color code {\tt1 0 0}, but in order to interpret this color code we need
+to know what the underlying color space is.
+That's why the second color space in the array is {\bf DeviceRGB}, telling us to set the underlying color space
+to be {\bf DeviceRGB}.
+
+\subsection{Shading Patterns}
+
+A shading pattern is one which defines a gradient between colors.
+It is a pattern for all intents and purposes, and painting it is done in the same way as a normal pattern.
+Unlike a tiling pattern, a shading pattern is defined by a dictionary instead of a content stream.
+Fields in the pattern dictionary for a shading pattern are as follows:
+
+\bdicttable
+Type&name&(Optional) the type of PDF object the dictionary describes; must be {\bf Pattern}.\cr
+PatternType&integer&(Required) the code defining the type of pattern this dictionary describes.
+Must be $2$ for a shading pattern.\cr
+Shading&dictionary or stream&(Required) a shading object (see below) defining the shading pattern gradient.\cr
+Matrix&array&(Optional) An array of six numbers defining the pattern matrix.\cr
+ExtGState&dictionary&(Optional) a graphics state parameter dictionary to be put into effect when the shading
+is painted.
+\edicttable
+
+The most important field is {\bf Shading}, which defines the shading object; the object which controls the
+look of the gradient.
+A shading object may be a content stream or a dictionary, and in either case we refer to the dictionary (either
+the object itself or the content stream's dictionary) as the shading dictionary.
+The shading dictionary may have the following fields, which are common to all types of shadings (but different
+types of shadings will have additional fields):
+
+\bgroup
+\expandafter\def\csname enumstyle1\endcsname#1{#1}
+\bdicttable
+ShadingType&integer&(Required) the shading type (discussed below):
+\benum
+    \item function-based shading;
+    \item axial shading;
+    \item radial shading;
+    \item free-form Gourand-shaded triangle mesh;
+    \item lattice-form Gourand-shaded triangle mesh;
+    \item coons patch mesg;
+    \item tensor-product patch mesh.
+\eenum\cr
+ColorSpace&name&(Required) the color space in which the color values are to be interpreted.
+This cannot be a {\bf Pattern} space.\cr
+Background&array&(Optional) an array containing a color value (appropriate to {\bf ColorSpace}) determining
+a background color value.
+If present, this is used to color any region outside of the region defined by the shading object.\cr
+BBox&array&(Optional) an array of the form $[x_0\ y_0\ x_1\ y_1]$ which defines the bottom-left and top-right
+coordinates of the bounding box to clip the shading to.
+\edicttable
+\egroup
+
+We will focus on shading types $1$ through $3$, as $4$ through $7$ are much more complicated.
+If you're interested, consult the PDF reference.
+
+\subsubsection{Type 1 (Function-Based) Shadings}
+
+A function-based shading is one where the color at every point on the gradient is defined by a specified
+function.
+This is the most general form of shading.
+If a shading object is specified to be of type 1, it may have the following fields:
+
+\bdicttable
+Domain&array&(Optional) an array of four numbers $[x_0\ x_1\ y_0\ y_1]$ specifying the rectangular domain
+of coordinates over which the color function(s) are defined.
+Default is $[0\ 1\ 0\ 1]$.\cr
+Matrix&array&(Optional) an array of six numbers specifying a transformation mapping the coordinate space
+specified by {\bf Domain} to the shading's target coordinate space.
+For example, to map the default {\bf Domain} to a one-inch square starting at coordinate $(100,100)$, the
+{\bf Matrix} would be $[72\ 0\ 0\ 72\ 100\ 100]$ (since the default value of {\bf UserUnit} is $1/72$th of
+an inch).\cr
+Function&function&A $2$-in, $n$-out function; or an array of $n$ $2$-in $1$-out functions (where $n$ is the
+number of color values required by the {\bf ColorSpace} specified in the shading dictionary).
+Each function's domain must be a superset of {\bf Domain}.
+\edicttable
+
+For example, suppose we want to shade using the following function, which simply computes the average of its
+two inputs:
+
+\blisting
+1 0 obj
+<<
+    /FunctionType 4
+    /Domain [0 1 0 1]
+    /Range [0 1] 
+    /Length 13        
+>>
+stream
+{
+    add
+    2 div
+}
+endstream
+endobj
+\elisting
+
+\noindent We create a shading object which uses this function:
+
+\blisting
+% 2 0 obj
+<<
+    /ShadingType 1              % functional shading
+    /ColorSpace /DeviceGray     % use grayscale coloring
+    /Domain [0 1 0 1]           % domain is [0,1] x [0,1]
+    /Matrix [100 0 0 100 0 0]   % scale gradient by 100
+    /Function 1 0 R             % use above function
+>> 
+\elisting
+
+\noindent and a shading pattern object which sets this as its {\bf Shading} attribute
+
+\blisting
+% 4 0 obj
+<<
+    /Type /Pattern  % pattern object
+    /PatternType 2  % shading pattern
+    /Shading 2 0 R  % shading object is above dictionary
+>> 
+\elisting
+
+\noindent The object in which the pattern is drawn is
+
+\blisting
+5 0 obj
+<<
+    /Type /XObject
+    /Subtype /Form
+    /BBox [0 0 99.626 99.626]
+    /FormType 1
+    /Matrix [1 0 0 1 0 0]
+    /Resources 11 0 R
+    /Length 42        
+>>
+stream
+q
+/P scn          % set current pattern
+0 0 100 100 re  % draw rectangle
+B               % fill
+Q 
+endstream
+endobj
+\elisting
+
+\noindent Notice that we don't need to change the color space, as the color space is determined by the
+shading pattern ({\bf P} is defined in the resources of this object, object {\tt11 0} as a reference to object
+{\tt4 0}).
+The resulting pattern is:
+
+\bgroup
+\immediate\pdfobj stream attr{
+    /FunctionType 4
+    /Domain [0 1 0 1]
+    /Range [0 1]
+}{{
+    add
+    2 div
+}}
+
+\immediate\pdfobj{
+<<
+    /ShadingType 1
+    /ColorSpace /DeviceGray
+    /Domain [0 1 0 1]
+    /Matrix [100 0 0 100 0 0]
+    /Function \the\pdflastobj\space0 R
+>>
+}
+
+\immediate\pdfobj{
+<<
+    /Type /Pattern
+    /PatternType 2
+    /Shading \the\pdflastobj\space 0 R
+>>
+}
+
+\setbox0=\hbox to 100pt{\vrule width\z@ height100pt depth\z@%
+    \pdfliteral{
+        q
+        /P scn
+        0 0 100 100 re
+        B
+        Q
+    }\hfil%
+}
+\pdfxform resources{/Pattern << /P \the\pdflastobj\space 0 R >>}0
+
+\centerline{\pdfrefxform\pdflastxform}
+\egroup
+
+\subsubsection{Type 2 (Axial) Shadings}
+
+Axial shadings are shadings which vary along a linear axis between two endpoints, and extends indefinitely
+perpendicular to that axis.
+The shading may also extend indefinitely beyond either or both endpoints by continuing the boundary colors.
+The following table lists the fields specific to type 2 shadings:
+
+\bdicttable
+Coords&array&(Required) an array of the form $[x_0\ y_0\ x_1\ y_1]$ which specifies the start and endpoints
+of the axis, expressed in the shading's target coordinate space.\cr
+Domain&array&(Optional) an array of two numbers $[t_0\ t_1]$ which specifies the limiting values of the
+parameteric value $t$ (i.e. $t_0\leq t\leq t_1$).
+Default value is $[0\ 1]$.\cr
+Function&function&(Required) a $1$-in $n$-out function, or an array of $n$ $1$-in $1$-out functions (where
+$n$ is the number of color values required by the {\bf Color Space}).
+These functions are used to determine the color along the axis.
+Each function's domain must be a superset of {\bf Domain}.\cr
+Extend&array&(Optional) an array of two boolean values which specifies whether to extend the shading beyond
+the start and end points of the axis, respectively.
+Default value is $[{\tt false}\ {\tt false}]$.
+\edicttable
+
+Suppose we want to create a linear gradient between red and blue.
+We can use the following linear interpolation function 
+
+\blisting
+% 1 0 obj
+<<
+    /FunctionType 2 % exponential interpolation function
+    /Domain [0 1]   % domain is [0,1]
+    /C0 [1 0 0]     % interpolate between red ...
+    /C1 [0 0 .5]    % ... and blue
+    /N 1            % using linear interpolation
+>> 
+\elisting
+
+\noindent Now we define the shading object
+
+\blisting
+% 3 0 obj
+<<
+    /ShadingType 2          % axial shading
+    /ColorSpace /DeviceRGB  % use RGB color sapce
+    /Coords [0 0 100 0]     % axis between origin and (100,0)
+    /Domain [0 1]           % domain of function is [0 1]
+    /Function 1 0 R         % function is above linear interpolation function
+    /Extend [false false]   % do not extend
+>> 
+\elisting
+
+\noindent and the pattern object
+
+\blisting
+% 4 0 obj
+<<
+    /Type /Pattern  % pattern object
+    /PatternType 2  % shading pattern
+    /Shading 3 0 R  % using the above shading object
+>> 
+\elisting
+
+\noindent And the actual content stream where the gradient is drawn is
+
+\blisting
+5 0 obj
+<<
+/Type /XObject
+/Subtype /Form
+/BBox [0 0 99.626 99.626]
+/FormType 1
+/Matrix [1 0 0 1 0 0]
+/Resources 11 0 R
+/Length 94        
+>>
+stream
+q
+/P scn
+50 100 m
+100 100 100 50 v 100 0 50 0 v 0 0 0 50 v 0 100 50 100 v % draw circle
+h
+B                                                       % fill
+Q 
+endstream
+endobj
+\elisting
+
+\noindent Again, {\bf P} is defined in the {\bf Resources} of the content stream as a reference to the pattern
+object defined.
+The resulting pattern is
+
+\immediate\pdfobj{
+<<
+    /FunctionType 2
+    /Domain [0 1]
+    /C0 [1 0 0]
+    /C1 [0 0 .5]
+    /N 1
+>>
+}
+
+\immediate\pdfobj{
+<<
+    /ShadingType 2
+    /ColorSpace /DeviceRGB
+    /Coords [0 0 100 0]
+    /Domain [0 1]
+    /Function \the\pdflastobj\space0 R
+    /Extend [false false]
+>>
+}
+
+\immediate\pdfobj{
+<<
+    /Type /Pattern
+    /PatternType 2
+    /Shading \the\pdflastobj\space 0 R
+>>
+}
+
+\bgroup
+\setbox0=\hbox to 100pt{\vrule width\z@ height100pt depth\z@%
+    \pdfliteral{
+        q
+        /P scn
+        50 100 m
+        100 100 100 50 v
+        100 0 50 0 v
+        0 0 0 50 v
+        0 100 50 100 v
+        h
+        B
+        Q
+    }
+}
+\pdfxform resources{/Pattern << /P \the\pdflastobj\space 0 R >>}0
+
+\centerline{\pdfrefxform\pdflastxform}
+\egroup
+
+\subsubsection{Type 3 (Radial) Shadings}
+
+Radial shadings define a gradient that varies between two circles.
+This can be used to depict three-dimensional spheres and cones.
+Radial shading dictionaries may contain the following fields:
+
+\bdicttable
+Coords&array&(Required) an array of the form $[x_0\ y_0\ r_0\ x_1\ y_1\ r_1]$, which specifies the centers
+and radii of the starting and ending circles.
+$r_0$ and $r_1$ must be at least zero.
+If one is zero, it is treated as a point, and if both are, nothing is painted.\cr
+Domain&array&(Optional) an array of two numbers $[t_0\ t_1]$ specifying the limiting values of the parametric
+value $t$.
+This variable varies linearly between $t_0$ and $t_1$ as it goes between the two circles.
+$t$ is the input to the function specified by {\bf Function}.\cr
+Function&function&(Required) a $1$-in $n$-out, or an array of $n$ $1$-in $1$-out functions, (where $n$ is the
+number of values in the {\bf ColorSpace}) which specify the color to be drawn, called with parametric value
+$t$.
+Each function's domain must be a superset of {\bf Domain}.\cr
+Extend&array&(Optional) an array of two boolean values which specifies whether or not to extend the shading
+beyond the starting and ending circles.
+Default value $[{\it false}\ {\it false}]$.
+\edicttable
+
+For example, if we want to shade a circle with an inner color of red and an outer color of blue, we first
+define the interpolation function which linearly interpolates between red and blue (same as our previous
+example).
+Then we define a shading object:
+
+\blisting
+% 3 0 obj
+<<
+    /ShadingType 3              % radial shading
+    /ColorSpace /DeviceRGB      % rgb color space
+    /Coords [75 75 0 50 50 50]  % first circle is a point at (75,75),
+                                % second is the circle of radius 50 at (50,50)
+    /Domain [0 1]               % domain of linear interpolation function
+    /Function 1 0 R             % use linear interpolation function
+    /Extend [false false]       % do not extend
+>> 
+\elisting
+
+\noindent The object which draws the pattern is
+
+\blisting
+4 0 obj
+<<
+    /Type /XObject
+    /Subtype /Form
+    /BBox [0 0 99.626 99.626]
+    /FormType 1
+    /Matrix [1 0 0 1 0 0]
+    /Resources 10 0 R
+    /Length 7
+>>
+stream
+/Sh sh
+endstream
+endobj
+\elisting
+
+\noindent Notice here we just use the {\bf sh} operator, which we explain below.
+Let's look at the resources dictionary:
+
+\blisting
+% 10 0 obj
+<<
+    /Shading << /Sh 3 0 R >>
+    /ProcSet [ /PDF ]
+>>
+\elisting
+
+\noindent So we define {\bf Sh} to be a {\bf Shading} object, referencing the shading object defined in object
+{\tt3 0}.
+The resulting pattern is
+
+\immediate\pdfobj{
+<<
+    /FunctionType 2
+    /Domain [0 1]
+    /C0 [1 0 0]
+    /C1 [0 0 .5]
+    /N 1
+>>
+}
+
+\immediate\pdfobj{
+<<
+    /ShadingType 3
+    /ColorSpace /DeviceRGB
+    /Coords [75 75 0 50 50 50]
+    /Domain [0 1]
+    /Function \the\pdflastobj\space0 R
+    /Extend [false false]
+>>
+}
+
+\bgroup
+\setbox0=\hbox to 100pt{\vrule width\z@ height100pt depth\z@%
+    \pdfliteral{
+        /Sh sh
+    }
+}
+\pdfxform resources{/Shading << /Sh \the\pdflastobj\space 0 R >>}0
+
+\centerline{\pdfrefxform\pdflastxform}
+\egroup
+
+
+
