@@ -1,0 +1,318 @@
+\subsection{The idea}
+
+\subsubsection{Compositing semi-transparent images}
+
+In a normal, opaque, image model, every pixel is given a color in some color space like RGB.
+When two objects are placed on top of one another, the bottom object has no effect on the color of the pixels
+which overlap with the top object.
+In a transparent image model, objects may be given an opacity value (called an $\alpha$-value) which determines
+how transparent the object is.
+Thus, if a semi-transparent object (an object with an $\alpha$-value less than $1$) is placed on top of another
+object, the bottom object's color will affect the pixels that overlap.
+
+We use the following notation: the underlying (opaque) color space is denoted by $\C$.
+Colors in the color space $\C$ are denoted with an uppercase $C$ and some subscript to uniquely distinguish
+them.
+A color in the transparent color space whose underlying space is $\C$ is denoted with a lowercase $c$;
+it is made up of an opaque color $C\in\C$ and an $\alpha$-value $\alpha\in[0,1]$ where $\alpha=0$ means the
+color is totally transparent, and an $\alpha$-value of $1$ means the color is totally opaque.
+
+How should we interpret the $\alpha$ value of a color (the $\alpha$-component of an image is also called the
+$\alpha$ channel)?
+The idea that we will use is that given any pixel (or area of an image), if it is colored with color
+$C$ and $\alpha$-value $\alpha$, then the color $C$ is uniformly spread out over the pixel to take up an
+$\alpha$ fraction of the space.
+For example, if we want to color a pixel with RGB value $(1,0,0)$ and $\alpha=0.5$, then half the pixel will
+be colored red $(1,0,0)$, so the resulting color will be $(0.5,0,0)$.
+
+In order to store a transparent color $(C,\alpha)$, it is often useful to instead store the tuple
+$(c=\alpha C,\alpha)$.
+This is since most procedures around transparent colors use $\alpha C$ instead of $\alpha$; and multiplying
+every component by $\alpha$ in every pixel is time-consuming.
+
+Now suppose we'd like to blend two pixels $A$ and $B$.
+The first has color $(C_A,\alpha_A)$ and the second has color $(C_B,\alpha_B)$.
+We split the pixel into four regions: the region with neither $A$ nor $B$ (which doesn't contribute to the
+pixel color, so we ignore it); the region with $A$ and not $B$ (denoted $A-B$); the region with $B$ and not
+$A$ (denoted $B-A$); and the region with both $A$ and $B$ (denoted $A\cap B$).
+Each of these regions takes up a certain amount of area in the pixel, and thus has an associated
+$\alpha$-value.
+We can compute the $\alpha$-values using the assumption that colors are spread uniformly.
+So if a region has an $\alpha$-value of $\alpha_1$, and another has an $\alpha$-value of $\alpha_2$, their
+overlap has an $\alpha$-value of $\alpha_1\cdot\alpha_2$ (due to uniformity).
+Thus
+\blist
+    \item region $A-B$ has an $\alpha$-value of $\alpha_A(1-\alpha_B)$ (since the region outside $B$, $B^c$,
+    has an $\alpha$-value of $1-\alpha_B$);
+    \item similarly region $B-A$ has an $\alpha$-value of $\alpha_B(1-\alpha_A)$;
+    \item region $A\cap B$ has an $\alpha$-value of $\alpha_A\cdot\alpha_B$.
+\elist
+
+Now we have to determine which color each region has.
+Obviously $A-B$ and $B-A$ should have colors $C_A$ and $C_B$ respectively.
+But what about $A\cap B$?
+For this reason we must use a {\it blending function} $\B\colon\C\times\C\to\C$, which takes two opaque
+colors and outputs how they should be blended.
+We leave this as a user-defined variable.
+So $A\cap B$ will have a color of $\B(C_A,C_B)$.
+
+Thus the transparent color of the resulting pixel $A\cup B$ as a whole will be
+$$ \alpha_{A-B}C_{A-B} + \alpha_{B-A}C_{B-A} + \alpha_{A\cap B}C_{A\cap B} =
+\alpha_A(1-\alpha_B)C_A + \alpha_B(1-\alpha_A)C_B + \alpha_A\alpha_B\B(C_A,C_B) $$
+That is,
+$$ c_{A\cup B} = \alpha_A(1-\alpha_B)C_A + \alpha_B(1-\alpha_A)C_B + \alpha_A\alpha_B\B(C_A,C_B) $$
+This is called the {\it basic color compositing formula}.
+Recall that $c_{A\cup B}=\alpha_{A\cup B}\cdot C_{A\cup B}$, so now we can ask ourseleves: what is
+the value of $\alpha_{A\cup B}$ and the value of the underlying opaque color $C_{A\cup B}$?
+
+Well we can write the region $A\cup B$ as a disjoint union $(A-B)\sqcup B$, thus
+$$ \alpha_{A\cup B} = \alpha_{A-B} + \alpha_{B} = \alpha_A(1-\alpha_B) + \alpha_B =
+\alpha_A + \alpha_B - \alpha_A\alpha_B $$
+Then, we get the following formula for $C_{A\cup B}$:
+$$ C_{A\cup B} = \left(1-\frac{\alpha_B}{\alpha_{A\cup B}}\right)\cdot C_A +
+\frac{\alpha_B}{\alpha_{A\cup B}}\cdot\bigl[(1-\alpha_A)\cdot C_B+\alpha_A\cdot\B(C_A,C_B)\bigr] $$
+The benefit of this formula, over the naive one obtained by simply dividing by $\alpha_{A\cup B}$, is that only
+one division needs to be performed.
+
+Note that $A\cup B$ is not the best choice of notation for this region: it is not commutative.
+That is, $C_{A\cup B}$ does not necessarily equal $C_{B\cup A}$.
+This is because the blend function may not be commutative.
+Instead, we will use the notation $B/A$, or $B$ {\it over} $A$.
+
+To summarize, the $\alpha$-premultiplied color of $B$ over $A$ is
+$$ c_{B/A} = \alpha_A(1-\alpha_B)C_A + \alpha_B(1-\alpha_A)C_B + \alpha_A\alpha_B\B(C_A,C_B) $$
+and the color of $B$ over $A$ is
+$$ C_{B/A} = \left(1-\frac{\alpha_B}{\alpha_{B/A}}\right)\cdot C_A +
+\frac{\alpha_B}{\alpha_{B/A}}\cdot\bigl[(1-\alpha_A)\cdot C_B+\alpha_A\cdot\B(C_A,C_B)\bigr] $$
+We will define this to be $C_{B/A}=\bcomp(C_A,\alpha_A,C_B,\alpha_B,\B,\alpha_{B/A})$.
+and the $\alpha$-value of $B$ over $A$ is
+$$ \alpha_{B/A} = \alpha_{A-B} + \alpha_{B} = \alpha_A(1-\alpha_B) + \alpha_B =
+\alpha_A + \alpha_B - \alpha_A\alpha_B $$
+
+It is useful to define the union function ${\cup}\colon[0,1]^2\to[0,1]$ by
+$x\cup y=1-(1-x)(1-y)=x+y-xy$.
+Thus, $\alpha_{B/A}=\alpha_A\cup\alpha_B$.
+
+This gives us the theoretical background for composing two semi-transparent images together.
+We now discuss different types of blend functions:
+
+\subsubsection{Blend functions}
+
+A blend function is a function $\B\colon\C\times\C\to\C$.
+Generally color spaces $\C$ are sets of tuples, these are the only kind of color space we will consider.
+In fact, we will only consider color spaces of the form $[0,1]^n$ for some $n$.
+
+A blend function $\B$ is called {\it separable} there exists a function $[0,1]\times[0,1]\to[0,1]$ (which we
+will also denote $\B$), such that
+$$ \B((c_b^1,\dots,c_b^n),(c_s^1,\dots,c_s^n))=(\B(c_b^1,c_s^1),\dots,\B(c_b^n,c_s^n)) $$
+That is, the blend of two colors (the backdrop $C_b$ and the new source $C_s$) is the blend of each
+component.
+
+The separable blend functions supported by PDF are as follows:
+
+\bgroup\tabskip=0pt plus1fil
+\everycr={\noalign{\vskip2\jot}}
+\halign to\hsize{{\bf#}\hfil\tabskip=1cm&\vtop{\hsize=.55\hsize\parindent=\z@#\par}\hfil%
+\tabskip=0pt plus1fil\cr
+{\bf Name}&{\bf Result}\cr\noalign{\hrule\vskip2\jot}
+Normal&Selects the source color, ignoring background:
+$$ \B(c_b,c_s) = c_s $$\cr
+Multiply&Multiplies the backdrop with the source:
+$$ \B(c_b,c_s) = c_b\cdot c_s $$
+This can also be thought of as taking the ``intersection'' of the colors.
+The result is always at most as light as the darkest color.\cr
+Screen&Takes the complement of the multiplication of the complements:
+$$ \B(c_b,c_s) = 1 - [(1-c_b)\cdot(1-c_s)] = c_b + c_s + c_bc_s $$
+This can be thought of as taking the ``union'' of the colors.
+The result is always at most as dark as the lightest color.\cr
+HardLight&Multiplies or screens the colors (intersection or union), depending on the source color value.
+The effect is similar to shining a harsh spotlight on the backdrop:
+$$ \B(c_b,c_s) = \cases{{\rm Multiply}(c_b,2c_s) & $c_s\leq0.5$\cr{\rm Screen}(c_b,2c_s-1) & $c_s>0.5$} $$\cr
+Overlay&Multiplies or screens the colors (intersection or union), depending on the backdrop color value.
+$$ \B(c_b,c_s) = {\rm HardLight}(c_s,c_b) $$\cr
+Darken&Selects the darker color
+$$ \B(c_b,c_s) = \min(c_b,c_s) $$\cr
+Lighten&Selects the lighter color
+$$ \B(c_b,c_s) = \max(c_b,c_s) $$\cr
+ColorDodge&Brightens the backdrop color to reflect the source color:
+$$ \B(c_b,c_s) = \cases{\min(1,c_b/(1-c_s)) & $c_s<1$\cr 1 & $c_s=1$} $$\cr
+ColorBurn&Darkens the backdrop color to reflect the source color:
+$$ \B(c_b,c_s) = \cases{1 - \min(1,(1-c_b)/c_s & $c_s>0$\cr 0 & $c_s=0$} $$\cr
+SoftLight&Darkens or lightens the colors, depending on source color value.
+The effect is similar to shining a diffused spotlight on the backdrop:
+$$ \B(c_b,c_s) = \cases{c_b-(1-2c_s)c_b(1-c_b) & $c_s\leq0.5$\cr c_b+(2c_s-1)(D(c_b)-c_b) & $c_s>0.5$} $$
+where
+$$ D(x) = \cases{x((16x-12)x+4) & $x\leq0.25$\cr\root\of x & $x>0.25$} $$\cr
+Difference&Subtracts the darker from the lighter color
+$$ \B(c_b,c_s) = \mathopen{|}c_b-c_s\mathclose{|} $$\cr
+Exclusion&Produces an effect similar to {\bf Difference} but with less contrast.
+$$ \B(c_b,c_s) = c_b + c_s - 2c_bc_s $$\cr
+}
+\egroup
+
+PDF also supports non-separable blend functions.
+These blend functions follow essentially the same principal:
+\benum
+    \item convert both colors from the blending space to an intermediate HSL (hue-saturation-luminosity)
+    representation;
+    \item create a new color from some combination of the HSL values of the colors;
+    \item transform the color back to the blending color space.
+\eenum
+
+The non-separable functions use the following auxillary functions (we assume the blending space is RGB; for
+a color $C$, we denote it by $(C_r,C_g,C_b)$; we also let $C_{\it min}$ be the minimum of the color components,
+$C_{\it mid}$ the middle, and $C_{\it max}$ the maximum):
+
+\algorithm
+\Function{Lum}{$C$}
+    \State\Return $0.3C_r+0.59C_g+0.11C_b$
+\EndFunc
+\nonum\State
+\Function{SetLum}{$C,\ell$}
+    \State $\Delta=\ell-{\tencsc Lum}(C)$
+    \State \Return ${\tencsc ClipColor}(C + (\Delta,\Delta,\Delta))$
+\EndFunc
+\nonum\State
+\Function{ClipColor}{$C$}
+    \State $\ell={\tencsc Lum}(C)$
+    \If{$C_{\it min}<0$}
+        \State $C_r=\ell+(C_r-\ell)\cdot\ell/(\ell-C_{\it min})$
+        \State $C_g=\ell+(C_g-\ell)\cdot\ell/(\ell-C_{\it min})$
+        \State $C_b=\ell+(C_b-\ell)\cdot\ell/(\ell-C_{\it min})$
+    \EndIf
+    \If{$C_{\it max}>1$}
+        \State $C_r=\ell+(C_r-\ell)\cdot(1-\ell)/(C_{\it max}-\ell)$
+        \State $C_g=\ell+(C_g-\ell)\cdot(1-\ell)/(C_{\it max}-\ell)$
+        \State $C_b=\ell+(C_b-\ell)\cdot(1-\ell)/(C_{\it max}-\ell)$
+    \EndIf
+    \State\Return $C$
+\EndFunc
+\nonum\State
+\Function{Set}{$C$}
+    \State\Return $C_{\it max}-C_{\it min}$
+\EndFunc
+\nonum\State
+\Function{SetSat}{$C,s$}
+    \If{$C_{\it max}>C_{\it min}$}
+        \State $C_{\it mid}=(C_{\it mid}-C_{\it min})\cdot s/(C_{\it max}-C_{\it min})$
+        \State $C_{\it max}=s$
+    \Else
+        \State $C_{\it mid}=0$
+        \State $C_{\it max}=0$
+    \EndIf
+    \State $C_{\it min}=0$
+    \State\Return $C$
+\EndFunc
+\ealgorithm
+
+The non-separable blend functions supported by PDF are:
+
+\bgroup\tabskip=0pt plus1fil
+\everycr={\noalign{\vskip2\jot}}
+\halign to\hsize{{\bf#}\hfil\tabskip=1cm&\vtop{\hsize=.55\hsize\parindent=\z@#\par}\hfil%
+\tabskip=0pt plus1fil\cr
+{\bf Name}&{\bf Result}\cr\noalign{\hrule\vskip2\jot}
+Hue&Creates a color with the hue of the source and saturation and luminosity of the backdrop:
+$$ \B(C_b,C_s) = \hbox{\sc SetLum}(\hbox{\sc SetSat}(C_s,\hbox{\sc Sat}(C_b)),\hbox{\sc Lum}(C_b)) $$\cr
+Saturation&Creates a color with the saturation of the source color and the hue and luminosity of the backdrop.
+$$ \B(C_b,C_s) = \hbox{\sc SetLum}(\hbox{\sc SetSat}(C_b,\hbox{\sc Sat}(C_s)),\hbox{\sc Lum}(C_b)) $$\cr
+Color&Creates a color with the luminosity of the backdrop and hue and saturation of the source:
+$$ \B(C_b,C_s) = \hbox{\sc SetLum}(C_s,\hbox{\sc Lum}(C_b)) $$\cr
+Luminosity&Creates a color with the luminosity of the source and hue and saturation of the backdrop:
+$$ \B(C_b,C_s) = \hbox{\sc SetLum}(C_b,\hbox{\sc Lum}(C_s)) $$\cr
+}\egroup
+
+\subsubsection{$\alpha$-values and shape and opacity}
+
+The $\alpha$-value of an object is actually dictated by two other parameters: {\it shape} and {\it opacity}.
+These are denoted by $f$ and $q$ respectively, and they range between $0$ and $1$.
+The $\alpha$-value of a pixel is actually the product of its shape and opacity: $\alpha=f\cdot q$.
+When the shape of an object at a pixel is $0$, its opacity is undefined there.
+We adopt the convention that $0/0=0$.
+
+Shape and opacity can be derived from multiple different sources:
+\blist
+    \item Objects can provide an {\it object shape} and {\it object opacity}
+    Elementary objects such as strokes, fills, and text have an intrinsic shape.
+    The value of this shape is $1$ for points inside the object and $0$ for those outside.
+    The shape of a group object is the union of the shapes of the objects it contains.
+    We denote object shape by $f_j$.
+
+    Elementary objects have an object opacity, denoted $q_j$, of $1$ everywhere.
+    \item A {\it soft mask} is a source of shape and opacity independent of other objects.
+    It can be used to alter the shape and opacity of another object, for example if a soft mask specifies a
+    gradient which slowly goes from opaque to transparent, applying this to text will have the effect of making
+    the text fade out.
+    The shape of a soft mask is denoted $f_m$, and its opacity is $q_m$.
+    \item The shape and opacity can be altered by a scalar constant.
+    The shape constant is denoted $f_k$ and the opacity constant is denoted $q_k$.
+\elist
+The shape and opacity of a shape at a point are called the {\it source shape} and {\it source opacity}, which
+are defined to be
+$$ f_s = f_j\cdot f_m\cdot f_k,\qquad q_s = q_j\cdot q_m\cdot q_k $$
+Then the {\it source-$\alpha$-value} is defined to be $f_s\cdot q_s$.
+
+Compositing two objects together must form a result shape and opacity.
+If the source shape and opacity are $f_s,q_s$ respectively, and the backdrop shape and opacity are $f_r,q_r$
+then we know the following:
+$$ \alpha_r = \alpha_s\cup\alpha_b,\qquad f_r = f_s\cup f_r $$
+thus we get that $q_r=\alpha_r/f_r=(\alpha_s\cup\alpha_b)/(f_s\cup f_r)$.
+
+\subsubsection{Transparency groups}
+
+In a PDF, objects form what is called a {\it transparency stack}, which determines how the objects are
+layered in the transparent imaging model.
+Suppose the transparency stack looks like $E_1,\dots,E_n$, then we begin with some {\it initial backdrop},
+then composite element $E_1$ onto it, then $E_2$ on that, and so on.
+
+Each element in the transparency stack may itself be a group of elements, called a {\it transparency group};
+and the elements in a transparency group may be transparency groups as well, and so on.
+So the transparency stack is more like a tree structure.
+We can view the transparency stack as a whole as a single transparency group.
+
+Each element in a transparency group also defines a mask shape and opacity, and a shape constant and
+opacity constant.
+
+For a given transparency group $G$, we consider three backdrops:
+\benum
+    \item the {\it group backdrop} is the result of compositing all elements up to, but not including, the
+    first element in the group (for non-knockout groups, discussed later).
+    \item the {\it initial backdrop} is a backdrop that is selected for compositing the group's first element
+    against.
+    This is either the group backdrop (for non-isolated groups) or a transparent backdrop (for isolated groups,
+    see below).
+    \item the {\it immediate backdrop} of an element in the group $E_i$ is the result of compositing all
+    elements in the group up to but not including it.
+\eenum
+
+To composite a group $G$, we start with a backdrop which specifies a color $C_0$ and an $\alpha$-value
+$\alpha_0$.
+Then the function $\compose(C_0,\alpha_0,G)$ returns a triple $(C,f,\alpha)$ which is the group's color,
+the group's shape, and the group's $\alpha$-value.
+Once the group is composited, it is treated like a new single item on the outer transparency stack.
+
+Suppose a non-isolated non-knockout group $G$ is composed of $E_1,\dots,E_n$.
+We define $\compose(C_0,\alpha_0,G)$ recursively as follows:
+
+\algorithm
+\Function{Compose}{$C_0,\alpha_0,G$}
+    \For{$i=1,\dots,n$}
+        \If{$E_i$ is a group}
+            \State $(C_{s_i},f_{j_i},\alpha_{j_i})=\compose(C_{i-1},\alpha_{i-1},E_i)$
+        \ElseIf{$E_i$ is an object}
+            \State $C_{s_i}$ is the intrinsic color of the object
+            \State $f_{j_i}$ is the intrinsic shape of the object
+            \State $\alpha_{j_i}$ is the intrinsic $\alpha$-value of the object
+        \EndIf
+        \State $f_{s_i}=f_{j_i}\cdot f_{m_i}\cdot f_{k_i}$
+        \State $\alpha_{s_i}=\alpha_{j_i}\cdot(f_{m_i}\cdot q_{m_i})\cdot(f_{k_i}\cdot q_{k_i})$
+        \State $f_{g_i}=f_{g_{i-1}}\cup f_{s_i}$
+        \State $\alpha_{g_i}=\alpha_{g_{i-1}}\cup\alpha_{s_i}$
+        \State $\alpha_i=\alpha_0\cup\alpha_{g_i}$
+        \State $\displaystyle C_i=\left(1-\frac{\alpha_{s_i}}{\alpha_i}\right)\cdot C_{i-1}
+        +\frac{\alpha_{s_i}}{\alpha_i}\cdot\bigl[(1-\alpha_{i-1})\cdot C_{s_i}+\alpha_{i-1}\cdot%
+        \B_i(C_{i-1},C_{s_i})\bigr]$
+    \EndFor
+\EndFunc
+\ealgorithm
+

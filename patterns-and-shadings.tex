@@ -784,5 +784,11 @@ The resulting pattern is
 \centerline{\pdfrefxform\pdflastxform}
 \egroup
 
+\subsubsection{The shading operator}
 
+If you have a shading pattern {\it name} and you'd like to draw it as-is (without using it to fill a path),
+you can use the shading operator {\bf sh}.
+{\it name} must be specified in the {\bf Shading} subdictionary of the resource dictionary of the current
+content stream.
+This operator should only be applied to bounded or geometrically defined shadings.
 

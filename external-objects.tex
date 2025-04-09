@@ -1,0 +1,202 @@
+An external object (XObject) is a graphics object whose content is defined by a self-contained content stream,
+separate from the content stream in which it is used.
+There are three types of XObjects, but we won't discuss the third (PostScript XObjects) as their use is
+discouraged.
+The other two types of XObjects are
+\benum
+    \item {\it image XObjects} which represent images;
+    \item {\it form XObjects} which is are self-contained descriptions of an arbitrary sequence of
+    graphics objects.
+    Two subtypes of form XObjects are {\it group XObjects} and {\it reference XObjects}.
+\eenum
+
+If an XObject is named by {\it name} in the {\bf XObject} subdictionary of the {\bf Resource} dictionary of
+a content stream, it can be painted using the {\bf Do} operator.
+For example, we may define the following form XObject:
+
+\blisting
+1 0 obj
+<<
+    /Type /XObject
+    /Subtype /Form
+    /BBox [0 0 10 1]
+    /FormType 1
+    /Matrix [1 0 0 1 0 0]
+    /Resources 7 0 R
+    /Length ...
+>>
+stream
+1 w
+1 0 0 1 0 .5 cm
+0 0 m 10 0 l S
+endstream
+endobj
+\elisting
+
+\noindent which simply paints a line of length $10$.
+Now, in another content stream we can paint this XObject using the {\bf Do} operator:
+
+\blisting
+4 0 obj
+<<
+    /Length 34        
+>>
+stream
+q
+1 0 0 1 72 765.905 cm
+/Fm1 Do
+Q
+endstream
+endobj
+\elisting
+
+\noindent We see that {\bf Do} references the name {\bf Fm1}, which is defined in the page's {\bf Resource}
+dictionary to be a reference to object {\tt1 0}.
+
+\blisting
+% 2 0 obj
+<<
+    /XObject << /Fm1 1 0 R >>
+    /ProcSet [ /PDF ]
+>>
+\elisting
+
+\subsection{Images}
+
+There are two ways to insert images into a PDF.
+One is using image XObjects, and another is using inline images where the content of the image is represented
+inline directly in a content stream.
+Image XObjects will be discussed later, with their respective pdf\TeX{} primitives.
+
+An inline image is declared in a content stream in the following way:
+
+\blisting
+BI  % begin inline image object
+... key-value pairs ...
+ID  % begin image data
+... image data ...
+EI  % end inline image object
+\elisting
+
+\noindent That is, the {\bf BI} operator begins the inline image dictionary (except its just a stream of
+key-value pairs, not wrapped in \inlinecode|<<...>>|), {\bf ID} ends it and begins the image data (which
+specifies how to color each pixel), and {\bf EI} ends the inline image object.
+The fields that can placed in between {\bf BI} and {\bf ID} are
+
+\bdicttable
+BitsPerComponent&integer&(Required) the number of bits used to represent each color component (a single value
+in a color value).
+Valid values are $1,2,4,8,16$.\cr
+Width&integer&(Required) the width of the image, in samples.\cr
+Height&integer&(Required) the height of the image, in samples.\cr
+ColorSpace&name&(Required) the color space that the image is defined in.\cr
+Filter&array&(Required) an array of filters to be applied to the image data to decode it.
+\edicttable
+
+We can use the following abbreviations for the fields:
+\blist
+    \item {\bf BitsPerComponent} --- {\bf BPC}
+    \item {\bf Width} --- {\bf W}
+    \item {\bf Height} --- {\bf H}
+    \item {\bf ColorSpace} --- {\bf CS}
+    \item {\bf Filter} --- {\bf F}
+\elist
+
+So if {\bf CS} requires $n$ values per color (e.g. $3$ for RGB), {\bf W} is $w$, and {\bf H} is $h$,
+the image data should have $n\cdot w\cdot h$ samples.
+Each sample must have a size of {\bf BPC} after being decoded by the filter.
+The only filter we will discuss is {\bf AHx} (or {\bf ASCIIHexDecode}), which decodes ASCII hex codes.
+That is, it takes two ASCII characters (which are either $0-9$ or $a-z$ or $A-Z$), and computes the hex value.
+Whitespace is ignored.
+
+For example, we may have the inline image:
+
+\blisting
+q
+.996264 0 0 .996264 0 0 cm
+100 0 0 100 0 0 cm
+BI
+    /BPC 8
+    /CS /DeviceRGB
+    /F [ /AHx ]
+    /W 9
+    /H 9
+ID
+    ff0000 ff0000 ff0000 ff0000 ff0000 ff0000 ff0000 ff0000 ff0000 
+    ff0000 ffffff ffffff ffffff ffffff ffffff ffffff ffffff ff0000 
+    ff0000 ffffff 00ff00 00ff00 ffffff 00ff00 00ff00 ffffff ff0000 
+    ff0000 ffffff 00ff00 00ff00 ffffff 00ff00 00ff00 ffffff ff0000 
+    ff0000 ffffff ffffff ffffff ffffff ffffff ffffff ffffff ff0000 
+    ff0000 ffffff 0000ff ffffff ffffff ffffff 0000ff ffffff ff0000 
+    ff0000 ffffff ffffff 0000ff 0000ff 0000ff ffffff ffffff ff0000 
+    ff0000 ffffff ffffff ffffff ffffff ffffff ffffff ffffff ff0000 
+    ff0000 ff0000 ff0000 ff0000 ff0000 ff0000 ff0000 ff0000 ff0000 
+EI
+Q
+\elisting
+
+Which draws the following:
+
+\centerline{\hbox to100pt{\vrule width\z@ height100pt depth\z@%
+\pdfliteral{
+q
+.996264 0 0 .996264 0 0 cm
+100 0 0 100 0 0 cm
+BI
+    /BPC 8          % each value is a byte
+    /CS /DeviceRGB  % interpret colors as RGB
+    /F [ /AHx ]     % the stream is given in ASCII representing hexadecimal values
+    /W 9            % each line is given by 9 samples
+    /H 9            % 9 lines
+ID
+    ff0000 ff0000 ff0000 ff0000 ff0000 ff0000 ff0000 ff0000 ff0000 
+    ff0000 ffffff ffffff ffffff ffffff ffffff ffffff ffffff ff0000 
+    ff0000 ffffff 00ff00 00ff00 ffffff 00ff00 00ff00 ffffff ff0000 
+    ff0000 ffffff 00ff00 00ff00 ffffff 00ff00 00ff00 ffffff ff0000 
+    ff0000 ffffff ffffff ffffff ffffff ffffff ffffff ffffff ff0000 
+    ff0000 ffffff 0000ff ffffff ffffff ffffff 0000ff ffffff ff0000 
+    ff0000 ffffff ffffff 0000ff 0000ff 0000ff ffffff ffffff ff0000 
+    ff0000 ffffff ffffff ffffff ffffff ffffff ffffff ffffff ff0000 
+    ff0000 ff0000 ff0000 ff0000 ff0000 ff0000 ff0000 ff0000 ff0000 
+EI
+Q
+}\hfil}}
+
+\bigskip
+
+Recall that an image is by default one unit by one unit, so we must scale it to get the desired size.
+
+\subsection{Form XObjects}
+
+A form XObject is a self-contained content stream which can be painted within other content streams.
+The graphics defined in a form XObject are defined relative to its {\it form coordinate space}, which can
+then be scaled to user space using its {\bf Matrix} field.
+
+Form XObjects may have the following fields in their stream dictionary, as well as fields common to all
+content streams:
+
+\bdicttable
+Type&name&(Optional) the type of PDF object the dictionary describes; must be {\bf XObject}.\cr
+Subtype&name&(Required) the type of XObject the dictionary describes; must be {\bf Form}.\cr
+BBox&array&(Required) a bounding box which defines the boundary of the XObject in form space.
+The XObject is clipped to this boundary.\cr
+Matrix&array&(Optional) a matrix representing the transformation from form to user space.\cr
+Resources&dictionary&(Required) a dictionary specifying the resources required by the form XObject.\cr
+Group&dictionary&(Optional) a {\it group attributes dictionary} indicating that the contents of the form
+XObject are to be treated as a groip and specifying the attributes of that group (see below).
+\edicttable
+
+\subsubsection{Group XObjects}
+
+A {\it group XObject} is a type of form XObject that can be used to group graphical elements together for
+various purposes.
+It is declared by adding the {\bf Group} field to a form XObject's dictionary.
+This is a dictionary called the {\it group attributes dictionary}, which may have the following fields:
+
+\bdicttable
+Type&name&(Optional) the type of PDF object that this dictionary describes; must be {\bf Group}.\cr
+S&name&(Required) the {\it group subtype}, which identifies the kind of group the dictionary describes.
+The only available group subtype is {\bf Transparency}.
+Transparency group XObjects are discussed later.\cr
+\edicttable
+

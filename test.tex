@@ -2,37 +2,5 @@
 \catcode`@=11
 \def\nattrans,{.996264 0 0 .996264 0 0 cm}
 
-\immediate\pdfobj{
-<<
-    /FunctionType 2
-    /Domain [0 1]
-    /C0 [1 0 0]
-    /C1 [0 0 .5]
-    /N 1
->>
-}
-
-\immediate\pdfobj{
-<<
-    /ShadingType 3
-    /ColorSpace /DeviceRGB
-    /Coords [75 75 0 50 50 50]
-    /Domain [0 1]
-    /Function \the\pdflastobj\space0 R
-    /Extend [false false]
->>
-}
-
-\setbox0=\hbox to 100pt{\vrule width\z@ height100pt depth\z@%
-    \pdfliteral{
-        q
-        /Sh sh
-        Q
-    }
-}
-\pdfxform resources{/Shading << /Sh \the\pdflastobj\space 0 R >>}0
-
-\pdfrefxform\pdflastxform
-
 \bye
 

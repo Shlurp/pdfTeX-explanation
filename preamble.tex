@@ -140,5 +140,84 @@
 
 \def\place#1#2#3{\vbox to\z@{\vss\rlap{\hbox to#1pt{\hfil\vbox to#2pt{\hbox{#3}\vfil}}}}}
 
+\def\B{{\tt B}}
+\def\C{{\cal C}}
+
+\font\sevenrm=cmr7
+\font\tencsc=cmcsc10
+\font\sc=cmcsc10
+\font\sevenbf=cmbx7
+
+\newdimen\alg@indent
+\newcount\line@num
+\newif\if@prnum \@prnumtrue
+\def\algorithm{%
+    \line@num=1\relax%
+    \ialign to \dimexpr\hsize-\leftskip\relax\bgroup%
+        \hfil##\tabskip=.25cm&\kern\alg@indent##\hfil\tabskip=\z@\crcr
+}
+
+\def\ealgorithm{\crcr\egroup}
+\def\nonum{\global\@prnumfalse}
+\def\State{\crcr\relax\if@prnum{\sevenrm\the\line@num.}\global\advance\line@num by 1\relax\fi\global\@prnumtrue&}
+\def\comment@indent{.3cm}
+%\def\Comment{\cr&\hskip\comment@indent\hfill\vtop\bgroup\hsize=\dimexpr\hsize-\leftskip-\rightskip-1cm\relax\quitvmode\llap{$\mathchar"012E$ }\it}
+\def\Comment{\cr&$\mathchar"012E$ \vtop\bgroup\halign\bgroup\it##\hfill\crcr}
+\def\EndComment{\crcr\egroup\egroup}
+\def\lComment{\hskip\comment@indent$\mathchar"012E$ \it}
+\def\Return{\textbf{return} }
+
+\def\textbf#1{{\bf#1}}
+
+\def\startblock#1{%
+    \State#1%
+    \global\advance\alg@indent by.5cm\relax%
+}
+\def\endblock#1{%
+    \global\advance\alg@indent by-.5cm\relax
+    \State#1%
+}
+\def\middleblock#1{%
+    \global\advance\alg@indent by-.5cm\relax
+    \State#1%
+    \global\advance\alg@indent by.5cm\relax%
+}
+
+\def\codeparens#1{$\left(\hbox{#1}\right)$}
+
+\def\normblock#1#2{\gdef\args{(#2)}#1}
+\def\starblock#1#2{\gdef\args{#2:}#1}
+\def\starredblock#1{\@ifstar {\starblock{#1}}{\normblock{#1}}}
+
+\def\If{\starredblock{\startblock{\textbf{if} \args}}}
+\def\ElseIf{\starredblock{\middleblock{\textbf{else if} \args}}}
+\def\Else{\middleblock{\textbf{else}}}
+\def\EndIf{\endblock{\textbf{end if}}}
+\def\While{\starredblock{\startblock{\textbf{while} \args}}}
+\def\EndWhile{\endblock{\textbf{end while}}}
+\def\For{\starredblock{\startblock{\textbf{for} \args}}}
+\def\EndFor{\endblock{\textbf{end for}}}
+\def\Repeat#1{\startblock{\textbf{repeat} #1 \textbf{times}}}
+\def\EndRepeat{\endblock{\textbf{end repeat}}}
+\def\Function#1#2{\startblock{\textbf{function} {\tencsc #1}\codeparens{#2}}}
+\def\EndFunc{\endblock{\textbf{end function}}}
+\def\Routine#1{\startblock{\textbf{routine} {\tencsc #1}}}
+\def\EndRoutine{\endblock{\textbf{end routine}}}
+\def\InnerText#1{\crcr\multispan2\relax#1\hfil}
+\def\lIf{\starredblock{\State\textbf{if} \args\ }}
+\def\lElseIf{\starredblock{\State\textbf{else if} \args\ }}
+\def\lElse{\State\textbf{else} }
+\def\Choose{\startblock{\textbf{choose}}\gdef\choicenum{0}}
+\def\EndChoose{\endblock{\textbf{end choose}}}
+\def\Choice{%
+    \xdef\choicenum{\the\numexpr\choicenum +1\relax}%
+    \State{\sevenbf(\choicenum)}\hskip.25cm
+}
+
+\let\gets=\leftarrow
+
+\def\bcomp{\hbox{\sc BasicComposite}}
+\def\compose{\hbox{\sc Composite}}
+
 \catcode`_=\ulineccode
 
