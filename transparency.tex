@@ -84,7 +84,7 @@ $$ c_{B/A} = \alpha_A(1-\alpha_B)C_A + \alpha_B(1-\alpha_A)C_B + \alpha_A\alpha_
 and the color of $B$ over $A$ is
 $$ C_{B/A} = \left(1-\frac{\alpha_B}{\alpha_{B/A}}\right)\cdot C_A +
 \frac{\alpha_B}{\alpha_{B/A}}\cdot\bigl[(1-\alpha_A)\cdot C_B+\alpha_A\cdot\B(C_A,C_B)\bigr] $$
-We will define this to be $C_{B/A}=\bcomp(C_A,\alpha_A,C_B,\alpha_B,\B,\alpha_{B/A})$.
+We will define this to be $C_{B/A}=\bcomp(C_A,\alpha_A,C_B,\alpha_B,\B)$.
 and the $\alpha$-value of $B$ over $A$ is
 $$ \alpha_{B/A} = \alpha_{A-B} + \alpha_{B} = \alpha_A(1-\alpha_B) + \alpha_B =
 \alpha_A + \alpha_B - \alpha_A\alpha_B $$
@@ -188,7 +188,7 @@ $C_{\it mid}$ the middle, and $C_{\it max}$ the maximum):
     \State\Return $C$
 \EndFunc
 \nonum\State
-\Function{Set}{$C$}
+\Function{Sat}{$C$}
     \State\Return $C_{\it max}-C_{\it min}$
 \EndFunc
 \nonum\State
@@ -270,8 +270,8 @@ and the elements in a transparency group may be transparency groups as well, and
 So the transparency stack is more like a tree structure.
 We can view the transparency stack as a whole as a single transparency group.
 
-Each element in a transparency group also defines a mask shape and opacity, and a shape constant and
-opacity constant.
+Each element in a transparency group is an object specifying the element's color, shape, opacity, and
+blend mode.
 
 For a given transparency group $G$, we consider three backdrops:
 \benum
@@ -295,8 +295,13 @@ Suppose a non-isolated non-knockout group $G$ is composed of $E_1,\dots,E_n$.
 We define $\compose(C_0,\alpha_0,G)$ recursively as follows:
 
 \algorithm
-\Function{Compose}{$C_0,\alpha_0,G$}
+\Function{Composite}{$C_0,\alpha_0,G$}
+    \State $f_{g_0}=\alpha_{g_0}=0$
     \For{$i=1,\dots,n$}
+        \Comment
+            $C_{s_i}$ is the source color of element $i$, $f_{j_i}$ is the object shape of element $i$,\cr
+            and $\alpha_{j_i}=f_{j_i}\cdot q_{j_i}$ is the object $\alpha$-value of element $i$.
+        \EndComment
         \If{$E_i$ is a group}
             \State $(C_{s_i},f_{j_i},\alpha_{j_i})=\compose(C_{i-1},\alpha_{i-1},E_i)$
         \ElseIf{$E_i$ is an object}
@@ -304,15 +309,402 @@ We define $\compose(C_0,\alpha_0,G)$ recursively as follows:
             \State $f_{j_i}$ is the intrinsic shape of the object
             \State $\alpha_{j_i}$ is the intrinsic $\alpha$-value of the object
         \EndIf
+        \Comment
+            $f_{s_i}$ is the source shape of element $i$.\cr
+            It is obtained from the product of the object shape with the mask shape and
+            shape constant.
+        \EndComment
         \State $f_{s_i}=f_{j_i}\cdot f_{m_i}\cdot f_{k_i}$
+        \Comment
+            $\alpha_{s_i}$ is the source $\alpha$-value of element $i$.\cr
+            It is obtained from the product of the object $\alpha$, with the mask $\alpha$ and
+            $\alpha$ constant.
+        \EndComment
         \State $\alpha_{s_i}=\alpha_{j_i}\cdot(f_{m_i}\cdot q_{m_i})\cdot(f_{k_i}\cdot q_{k_i})$
+        \Comment
+            $f_{g_i}$ is the accumulated shape of group elements $E_1,\dots,E_i$ excluding the backdrop.
+        \EndComment
         \State $f_{g_i}=f_{g_{i-1}}\cup f_{s_i}$
+        \Comment
+            $\alpha_{g_i}$ is the accumulated source $\alpha$ of group elements $E_1,\dots,E_i$ excluding the
+            backdrop.
+        \EndComment
         \State $\alpha_{g_i}=\alpha_{g_{i-1}}\cup\alpha_{s_i}$
+        \Comment
+            $\alpha_i$ is the accumulated $\alpha$ after compositing $E_i$ onto the rest of the group,
+            including the backdrop.
+        \EndComment
         \State $\alpha_i=\alpha_0\cup\alpha_{g_i}$
+        \Comment
+            $C_i$ is the accumulated color after compositing $E_i$.
+        \EndComment
         \State $\displaystyle C_i=\left(1-\frac{\alpha_{s_i}}{\alpha_i}\right)\cdot C_{i-1}
         +\frac{\alpha_{s_i}}{\alpha_i}\cdot\bigl[(1-\alpha_{i-1})\cdot C_{s_i}+\alpha_{i-1}\cdot%
         \B_i(C_{i-1},C_{s_i})\bigr]$
     \EndFor
+    \State $C=C_n+(C_n-C_0)\cdot\left(\frac{\alpha_0}{\alpha_{g_n}}-\alpha_0\right)$
+    \State $f=f_{g_n}$
+    \State $\alpha=\alpha_{g_n}$
+    \State\Return $(C,f,\alpha)$
 \EndFunc
 \ealgorithm
+
+Let's take a look at each variable.
+$\alpha_{s_i}$ is defined as you'd expect: it's precisely $\alpha_{j_i}\cdot\alpha_{m_i}\cdot\alpha_{k_i}$.
+If we look at the definition of $\alpha_i$, we see that it's equal to
+$$ \alpha_i = \alpha_0\cup\alpha_{g_i} = \alpha_0\cup\alpha_{s_i}\cup\alpha_{g_{i-1}} = \cdots =
+\alpha_0\cup\bigcup_{j\leq i}\alpha_{s_j} $$
+Thus, we have that
+$$ \alpha_i = \alpha_{i-1} \cup \alpha_{s_i} $$
+This means that line $16$ is another way of writing
+$$ C_i = \bcomp(C_{i-1},\alpha_{i-1},C_{s_i},\alpha_{s_i},\B_i) $$
+
+What's the rationale behind the $\alpha_i$ variable?
+Well, $\alpha_i$ is the $\alpha$ of the group composited with its backdrop.
+We don't want to store this in $\alpha_{g_i}$, as it shouldn't affect later computations of compositing
+elements with the immediate backdrop.
+Importantly, every element of a group is composited onto a backdrop including the initial backdrop.
+This is done because most blend modes are dependent on the backdrop and source colors.
+This is also precisely the difference between non-isolated and isolated transparency groups.
+
+The formulas at the end (after the loop) essentially remove the contribution of the initial backdrop from
+the computation.
+This is since when the group is composited with the initial backdrop, it may be composited with a different
+blend mode or mask.
+This is more clear by viewing it as follows: first we define the {\it backdrop fraction} which measures the
+relative contribution of the backdrop color to the overall color:
+$$ \phi_b = \frac{(1-\alpha_{g_n})\alpha_0}{\alpha_0\cup\alpha_{g_n}} $$
+Indeed, $(1-\alpha_{g_n})\alpha_0$ measures the area covered by the backdrop and not the group.
+And $\alpha_0\cup\alpha_{g_n}$ is the total area covered.
+So $\phi_b$ measures the ratio between the area covered by just the backdrop and the total area.
+Then we get
+$$ C = \frac{C_n-\phi_b\cdot C_0}{1-\phi_b} $$
+Notice that $C_n-\phi_b\cdot C_0$ has the effect of removing the backdrop color from $C_n$, since $\phi_b$
+is the amount that $C_0$ contributed.
+And
+$$ \frac1{1-\phi_b} = \frac{\alpha_0\cup\alpha_{g_n}}{\alpha_{g_n}} $$
+so we are looking at the inverse ratio between the amount of area the group takes and the total area.
+So multiplying $C_n-\phi_b\cdot C_0$ by this scales back up the color to take the entirity of the area.
+
+\subsubsubsection{Isolated groups}
+
+An isolated group differs from a non-isolated groups in that each element is composited with a transparent
+backdrop as opposed to the group's backdrop.
+The effect that this has is that the group itself is transparent {\it relative to itself}, but not to its
+backdrop.
+
+The only change to the above algorithm is that $\alpha_0$ is set to zero.
+
+\subsubsubsection{Knockout groups}
+
+In a knockout group, each element is composited with the group's initial backdrop rather than the stack
+of preceding elements in the group.
+If elements have a binary shape ($1$ inside, $0$ outside), this has the effect of overlaying (or knocking-out)
+the effect of elements beneath it.
+This is similar to the opaque imaging model, except that ``topmost object wins'' applies to both color and
+opacity.
+
+We alter the algorithm above as follows:
+\blist
+    \item $\alpha_{g_i}$ is instead defined to be $(1-f_{s_i})\alpha_{g_{i-1}}+\alpha_{s_i}$
+    \item we also define 
+    $$ C_t=(f_{s_i}-\alpha_{s_i})\alpha_bC_b + \alpha_{s_i}\cdot\bigl[(1-\alpha_b)C_{s_i}+
+    \alpha_b\B_i(C_b,C_{s_i})\bigr] $$
+    and then define
+    $$ C_i = \frac{(1-f_{s_i})\alpha_{i-1}C_{i-1}+C_t}{\alpha_i} $$
+\elist
+
+\subsubsection{Soft masks}
+
+As previously discussed, shape and opacity values can be altered by soft masks, which are just other sources
+of shape and opacity values.
+These are generalizations of clipping paths, as a soft mask which specifies binary values does the same as
+clipping.
+
+A mask can be defined by creating a transparency group and painting objects into it, which defines the color,
+shape, and opacity in the usual way.
+Then the resulting group can be used to derive the mask in one of two ways, discussed below.
+
+A soft mask specifies a single value, called the {\it mask value} at every point.
+The mask value either specifies shape or opacity according to a flag (alpha is shape) in the graphics state.
+
+\subsubsubsection{Deriving a soft mask from group alpha}
+
+The first method involves first computing the color, shape, and $\alpha$-value of a transparency group $G$
+using the normal formula
+$$ (C,f,\alpha) = \compose(C_0,\alpha_0,G) $$
+where $C_0,\alpha_0$ are arbitrary and don't contribute to the result.
+Since $C$ isn't used, we don't need to compute it.
+
+The user then specifies a {\it transfer function} $[0,1]\to[0,1]$ which maps $\alpha$ to a mask value.
+
+\subsubsubsection{Deriving a soft mask from group luminosity}
+
+The second method of deriving a soft mask from a transparency group utilizes the luminosity of the group.
+The group is composited with a fully opaque backdrop of some color, then the mask value is defined to be the
+luminosity of the resulting color, $C$.
+The color $C$ is created by first compositing $G$ with a fully opaque background $C_0$, this gives
+$$ (C_g,f_g,\alpha_g) = \compose(C_0,1,G) $$
+then $C$ is the weighted average between $C_0$ and $C_g$:
+$$ C = (1-\alpha_g)\cdot C_0 + \alpha_g\cdot C_0 $$
+The color is then converted to its luminosity as follows:
+\blist
+    \item if the underlying color space is {\bf DeviceGray}, the luminosity is the same as the value;
+    \item if the underlying color space is {\bf DeviceRGB}, the luminosity is
+        $$ 0.3\cdot C_r + 0.59\cdot C_g + 0.11\cdot C_b $$
+    \item if the underlying color space is {\bf DeviceCMYK}, the luminosity is
+        $$ 0.3\cdot(1-C_c)(1-C_k) + 0.59\cdot(1-C_m)(1-C_k) + 0.11\cdot(1-C_y)(1-C_k) $$
+\elist
+Then the value computed is passed to a transfer function $[0,1]\to[0,1]$ to compute the mask value.
+
+\subsection{Specifying transparency in PDF}
+
+Single graphic objects are treated as elementary graphics objects in a transparency stack.
+Even if they overlap themselves (like a path which intersects itself), this does not affect its transparency.
+An object's source color $C_s$ is the same as its color in the opaque imaging model.
+Its backdrop color $C_b$ is the result of previous painting operations.
+
+The current blend mode is specified in the current graphics state under the {\bf BM} entry.
+The {\bf BM} entry is either a name corresponding to one of the names given above, or an array of names.
+In the latter case, the first name that device recognizes is used (or {\bf Normal} if it recognizes none of
+them).
+This way more blending modes can be implemented in the future.
+
+The current soft mask can be specified in the current graphics state under the {\bf SMask} entry.
+The value is a {\it soft mask dictionary}, defined below:
+
+\subsubsection{Soft mask dictionaries}
+
+A soft mask dictionary may have the following fields:
+
+\bdicttable
+Type&name&(Optional) the type of PDF object this dictionary describes; must be {\bf Mask}.\cr
+S&name&(Required) a subtype specifying the method to be used to derive the mask values from the transparency
+group specified by {\bf G}.
+This is either
+\blist
+    \item {\bf Alpha}: compite the group's $\alpha$-value and pass it to the transfer function specified by
+        {\bf TR} to derive the mask value.
+    \item {\bf Luminosity}: derive the mask value from the group's computed luminosity.
+\elist\cr
+G&stream&(Required) a transparency group XObject (see below) to be used as the source of the $\alpha$ or
+luminosity values for the mask.
+If {\bf S} is {\bf Luminosity}, the transparency group XObject must contain a {\bf CS} entry defining the
+color space in which the compositing is to be performed.\cr
+BC&array&(Optional) an array of component values specifying the backdrop to be used as the initial
+backdrop when compositing {\bf G}.
+This is only used if {\bf S} is {\bf Luminosity}.
+The array must have $n$ values, where $n$ is the number of components in the XObject specified by {\bf G}'s
+{\bf CS} entry.
+Default value: whatever the code is for black in {\bf CS}.\cr
+TR&function or name&(Optional) a $1$-in $1$-out function specifying the transfer function to be used in
+deriving the mask values from $\alpha$ or luminosity values.
+The name {\bf Identity} may be used in place of a function to represent the identity function.
+Default vale: {\bf Identity}.
+\edicttable
+
+\subsubsection{Transparency group XObjects}
+
+A transparency group is represented in PDF as a special subtype of group XObject, called a {\it transparency
+group XObject}.
+A group XObject is in turn a subtype of a form XObject, distinguished by the presence of a {\bf Group} entry
+in its form dictionary, whose value is a {\it group attributes dictionary}.
+For a transparency group, this may have the following fields:
+
+\bdicttable
+S&name&(Required) the {\it group subtype}, specifying what kind of group this dictionary describes.
+Must be {\bf Transparency}.\cr
+CS&name or array&(Required) the group color space, which is used for the following:
+\benum
+    \item as the color space into which colors are convered when painted into the group;
+    \item as the blending color space in which objects are composited within the group;
+    \item as the color space of the group as a whole when it in turn is painted as an object onto its
+        backdrop.
+\eenum\cr
+I&boolean&(Optional) a flag specifying if this transparency group is isolated.
+Default value: {\tt false}.\cr
+K&boolean&(Optional) a flag specifying if this transparency group is knockout.
+Default value: {\tt false}
+\edicttable
+
+\subsection{An example}
+
+Suppose we want to create the following effect of fading in the word ``hello'':
+
+\bgroup
+\catcode`_=11
+\setbox1=\hbox{\pdfliteral{1 g 1 G}hello}
+\xdef\w{\the\wd1}
+\xdef\h{\the\ht1}
+
+\immediate\pdfobj{
+<<
+    /FunctionType 2
+    /Domain [0 1]
+    /C0 [1]
+    /C1 [0]
+    /N 1
+>>
+}
+
+\immediate\pdfobj{
+<<
+    /ShadingType 2
+    /ColorSpace /DeviceGray
+    /Coords [0 \_nopt{\h} 0 0]
+    /Domain [0 1]
+    /Function \the\pdflastobj\space0 R
+    /Extend [false false]
+>>
+}
+
+\immediate\pdfobj{
+<<
+    /Type /Pattern
+    /PatternType 2
+    /Shading \the\pdflastobj\space0 R
+>>
+}
+
+\xdef\S{\the\pdflastobj}
+
+\immediate\pdfobj{
+<<
+    /Type /Group
+    /S /Transparency
+    /CS /DeviceGray
+>>
+}
+
+\immediate\pdfxform attr{
+    /Group \the\pdflastobj\space0 R
+}1%
+
+\immediate\pdfobj{
+<<
+    /Type /Mask
+    /S /Luminosity
+    /G \the\pdflastxform\space0 R
+>>
+}
+
+\immediate\pdfobj{
+<<
+    /Type /ExtGState
+    /SMask \the\pdflastobj\space0 R
+>>
+}
+
+\setbox0=\hbox to\w{\vrule width\z@ height\h depth\z@
+\pdfliteral{
+q
+    \nattrans,
+    /GS1 gs
+    /Sh sh
+Q
+}\hfil}
+\pdfxform resources{
+    /Shading << /Sh \S\space0 R >>
+    /ExtGState << /GS1 \the\pdflastobj\space0 R >>
+}0
+
+\centerline{\pdfrefxform\pdflastxform}
+\egroup
+
+The idea is as follows: we create a soft mask containing the word ``hello'', and then in another XObject we
+draw the gradient and use the soft mask as a mask.
+The code to do this is as follows:
+
+\blisting
+11 0 obj                    % XObject which draws the gradient and sets the soft mask
+<<
+/Type /XObject
+/Subtype /Form
+/BBox [0 0 20.479 6.918]
+/FormType 1
+/Matrix [1 0 0 1 0 0]
+/Resources 16 0 R
+/Length 48        
+>>
+stream
+q
+.996264 0 0 .996264 0 0 cm
+/GS1 gs     % set soft mask
+/Sh sh      % draw gradient
+Q 
+endstream
+endobj
+
+% 16 0 obj                  resources of above XObject
+<<
+    /Shading << /Sh 4 0 R >>
+    /ExtGState << /GS1 10 0 R >> 
+    /ProcSet [ /PDF ]
+>>
+
+% 4 0 obj                   pattern object
+<<
+    /Type /Pattern
+    /PatternType 2
+    /Shading 3 0 R
+>> 
+
+% 3 0 obj                   shading object
+<<
+    /ShadingType 2
+    /ColorSpace /DeviceGray
+    /Coords [0 6.94444 0 0]     % 6.94 is height of "hello"
+    /Domain [0 1]
+    /Function 1 0 R
+    /Extend [false false]
+>> 
+
+% 1 0 obj                   linear interpolation between white and black
+<<
+    /FunctionType 2
+    /Domain [0 1]
+    /C0 [1]
+    /C1 [0]
+/N 1 >> 
+
+% 10 0 obj                  graphics state object
+<<
+    /Type /ExtGState
+    /SMask 9 0 R
+>> 
+
+% 9 0 obj                   mask object
+<<
+    /Type /Mask
+    /S /Luminosity
+    /G 6 0 R
+>> 
+
+6 0 obj                     % transparency group XObject containing "hello"
+<<
+/Type /XObject
+/Subtype /Form
+/Group 5 0 R 
+/BBox [0 0 20.479 6.918]
+/FormType 1
+/Matrix [1 0 0 1 0 0]
+/Resources 7 0 R
+/Length 71        
+>>
+stream
+1 g 1 G
+1 0 0 1 0 6.918 cm
+BT
+/F1 9.9626 Tf 0 -6.918 Td [(hello)]TJ
+ET
+endstream
+endobj
+
+% 5 0 obj               group attributes dictionary
+<<
+    /Type /Group
+    /S /Transparency
+    /CS /DeviceGray
+>> 
+\elisting
 
