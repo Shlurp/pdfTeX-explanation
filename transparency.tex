@@ -391,7 +391,8 @@ So multiplying $C_n-\phi_b\cdot C_0$ by this scales back up the color to take th
 An isolated group differs from a non-isolated groups in that each element is composited with a transparent
 backdrop as opposed to the group's backdrop.
 The effect that this has is that the group itself is transparent {\it relative to itself}, but not to its
-backdrop.
+backdrop unless transparency is specified.
+This is generally what you want.
 
 The only change to the above algorithm is that $\alpha_0$ is set to zero.
 
@@ -413,6 +414,113 @@ We alter the algorithm above as follows:
     and then define
     $$ C_i = \frac{(1-f_{s_i})\alpha_{i-1}C_{i-1}+C_t}{\alpha_i} $$
 \elist
+
+\subsubsubsection{Differences between types of transparency groups}
+
+The following table shows the differences between types of transparency groups.
+The backdrop of each image is a gradient.
+The transparency group consists of four overlapping circles, painted with opacity of $1$ (in the group).
+The group is then painted with opacity of $1$ onto the backdrop.
+The blend mode in the group is {\bf Multiply}, and the blend mode onto the backdrop is {\bf Normal}. 
+
+\bgroup
+\def\transgroup#1#2{%
+\setbox0=\hbox to100pt{\vrule width0pt height100pt depth0pt%
+\pdfliteral{
+    \@normtrans\space
+    .75 g
+    /Gs gs
+    \circle{40}{60}{30} f
+    \circle{60}{60}{30} f
+    \circle{40}{40}{30} f
+    \circle{60}{40}{30} f
+}\hfil%
+}
+
+\immediate\pdfxform attr{
+/Group <<
+    /S /Transparency
+    /CS /DeviceRGB
+    /I #1
+    /K #2
+>>
+} resources {
+/ExtGState <<
+    /Gs <<
+        /ca 1
+        /BM /Multiply
+    >>
+>>
+}0
+
+\edef\Circ{\the\pdflastxform}
+
+\setbox0=\hbox to100pt{\vrule width0pt height100pt depth0pt%
+\pdfliteral{
+    q
+    \@normtrans\space
+    /Sh sh
+    /Gs gs
+    /Circ Do
+    Q
+}\hfil}
+
+\pdfxform resources{
+/Shading << /Sh
+    <<
+        /ShadingType 2
+        /ColorSpace /DeviceRGB
+        /Coords [0 0 100 0]
+        /Domain [0 1]
+        /Function <<
+            /FunctionType 3
+            /Bounds [.5]
+            /Encode [0 1 0 1]
+            /Domain [0 1]
+            /Functions [
+            <<
+                /FunctionType 2
+                /Domain [0 1]
+                /C0 [1 0 0]
+                /C1 [0 1 0]
+                /N 1
+            >>
+            <<
+                /FunctionType 2
+                /Domain [0 1]
+                /C0 [0 1 0]
+                /C1 [0 0 1]
+                /N 1
+            >>
+            ]
+        >>
+    >>
+>>
+/XObject <<
+    /Circ \Circ\space0 R
+>>
+/ExtGState <<
+    /Gs << /BM /Normal /ca 1 >>
+>>
+}0
+
+\hbox{$\vcenter{\pdfrefxform\pdflastxform}$}
+}
+
+\bigskip
+\centerline{\vbox{\tabskip=.25cm\openup2\jot\halign{#\hfil&&\hfil\vbox{#}\hfil\cr
+&\hbox{\bf Knockout}&\hbox{\bf Non-knockout}\cr
+{\bf Isolated}&\transgroup{true}{true}&\transgroup{true}{false}\cr
+{\bf Non-isolated}&\transgroup{false}{true}&\transgroup{false}{false}\cr
+}}}
+\bigskip
+
+The result for isolated groups is as you'd expect: the backdrop has no effect on the group since the opacity
+is $1$ (opaque).
+The overlapping areas are colored darker due to the {\bf Multiply} blend mode.
+For non-isolated groups, the backdrop does affect the group, even though it is opaque.
+
+\egroup
 
 \subsubsection{Soft masks}
 

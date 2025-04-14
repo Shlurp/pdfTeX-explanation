@@ -99,7 +99,7 @@ $A$ is a $2\times2$ matrix and $b$ a vector of size $2$.
 Suppose we want to transform $(x,y)$ to $(x',y')$ via such an affine transformation, then
 $$ \pmatrix{x'\cr y'} = \pmatrix{a&c\cr b&d}\pmatrix{x\cr y}+\pmatrix{e\cr f} $$
 or, we can write this as
-$$ \pmatrix{x'\cr y'\cr1} = \pmatrix{a&b&e\cr b&d&f\cr0&0&1}\pmatrix{x\cr y\cr1} $$
+$$ \pmatrix{x'\cr y'\cr1} = \pmatrix{a&c&e\cr b&d&f\cr0&0&1}\pmatrix{x\cr y\cr1} $$
 The reason we add the final line of the matrix is to make it square.
 So if the current CTM is $M$ and we'd like to transform it by the affine transformation described by matrix
 $A$, then we must change CTM to be $M\cdot A$.
@@ -112,7 +112,7 @@ Nevertheless, the results are the same.
 \eppbox
 
 The affine transformation represented by
-$$ \pmatrix{a&b&e\cr b&d&f\cr0&0&1} $$
+$$ \pmatrix{a&c&e\cr b&d&f\cr0&0&1} $$
 is represented in PDF code by $[a\ b\ c\ d\ e\ f]$.
 
 \subsection{Graphics State}

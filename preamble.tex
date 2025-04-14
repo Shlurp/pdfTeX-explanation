@@ -95,6 +95,8 @@
 
 \def\subsubsubsection#1{\par\smallskip\noindent{\setfontandscale{bf}{10pt}#1}\ }
 
+\def\hline{\noalign{\hrule\vskip2\jot}}
+
 \def\bthreetable#1#2#3{%
     \bgroup\tabskip=0pt plus1fil%
     \everycr={\noalign{\vskip2\jot}}%
@@ -108,6 +110,15 @@
     {\bf Key}&{\bf Type}&{\bf Value}\crcr\noalign{\hrule\vskip2\jot}
 }
 \let\edicttable=\ethreetable
+
+\def\btwotable#1#2{%
+    \bgroup\tabskip=0pt plus1fil%
+    \everycr={\noalign{\vskip2\jot}}%
+    \halign to\hsize\bgroup\strut{#1##}\hfil\tabskip=1cm&%
+    \vtop{\hsize=.55\hsize\parindent=\z@#2##}\hfil\tabskip=0pt plus1fil\crcr
+}
+\let\etwotable=\ethreetable
+
 
 \def\nattrans,{.996264 0 0 .996264 0 0 cm}
 
@@ -138,7 +149,7 @@
     h
 }
 
-\def\place#1#2#3{\vbox to\z@{\vss\rlap{\hbox to#1pt{\hfil\vbox to#2pt{\hbox{#3}\vfil}}}}}
+\def\place#1#2#3{\vbox to\z@{\vss\rlap{\hbox to#1pt{\hfil\vbox to#2pt{\rlap{#3}\vfil}}}}}
 
 \def\B{{\frak B}}
 \def\C{{\cal C}}
@@ -218,6 +229,48 @@
 
 \def\bcomp{\hbox{\sc BasicComposite}}
 \def\compose{\hbox{\sc Composite}}
+
+\def\@normtrans{0.996264 0 0 0.996264 0 0 cm}
+
+\def\@drawlines#1{%
+    -50 \_nopt{.5\dimexpr#1pt\relax -2pt} m
+    50 \_nopt{.5\dimexpr#1pt\relax -2pt} l
+}
+
+\def\drawlines{%
+    \pdfliteral{
+        0 0 m
+        \_prepeat{20}\@drawlines
+    }%
+}
+
+\def\clipping#1{%
+    \pdfliteral{q 3 0 0 3 0 0 cm 7 Tr}%
+    \rlap{#1}%
+    \pdfliteral{.75 g .75 G .1 w}%
+    \drawlines%
+    \pdfliteral{S Q}%
+}
+
+\def\democlip#1#2#3{\vtop{\hbox{%
+    \setbox0=\hbox{#1}%
+    \pdfliteral{q 3 0 0 3 0 0 cm .5 g .5 G #2 Tr}%
+    \rlap{\font\@@=ptmr7t\@@#1}%
+    \pdfliteral{Q}%
+    \clipping{\font\@@=ptmr7t\@@#1}%
+    \pdfliteral{q 3 0 0 3 0 0 cm .1 w #3 Tr}%
+    \rlap{\font\@@=ptmr7t\@@#1}%
+    \pdfliteral{Q}%
+    \hbox to3\wd0{\vrule height3\ht0 depth3\dp0 width\z@\hfil}%
+}}}
+
+\def\demotext#1#2{\vtop{\hbox{%
+    \setbox0=\hbox{#1}%
+    \pdfliteral{q 3 0 0 3 0 0 cm 0 G .5 g .1 w #2 Tr}%
+    \rlap{\font\@@=ptmr7t\@@ #1}%
+    \pdfliteral{Q}%
+    \hbox to3\wd0{\vrule height3\ht0 depth3\dp0 width\z@\hfil}%
+}}}
 
 \catcode`_=\ulineccode
 

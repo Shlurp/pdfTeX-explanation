@@ -4,82 +4,9 @@
 \def\@nopt#1{\expandafter\@rmpt\the\dimexpr#1\relax}
 \def\nattrans,{.996264 0 0 .996264 0 0 cm}
 
-\setbox1=\hbox{\pdfliteral{1 g 1 G}hello}
-\xdef\w{\the\wd1}
-\xdef\h{\the\ht1}
+\hbox{\pdfliteral direct{[(A) -1000 (W) 1000 (A) 300 (Y)] TJ}}
 
-\immediate\pdfobj{
-<<
-    /FunctionType 2
-    /Domain [0 1]
-    /C0 [1 0 0]
-    /C1 [0 0 .5]
-    /N 1
->>
-}
-
-\immediate\pdfobj{
-<<
-    /ShadingType 2
-    /ColorSpace /DeviceGray
-    /Coords [0 \@nopt{\h} 0 0]
-    /Domain [0 1]
-    /Function \the\pdflastobj\space0 R
-    /Extend [false false]
->>
-}
-
-\immediate\pdfobj{
-<<
-    /Type /Pattern
-    /PatternType 2
-    /Shading \the\pdflastobj\space0 R
->>
-}
-
-\xdef\S{\the\pdflastobj}
-
-\immediate\pdfobj{
-<<
-    /Type /Group
-    /S /Transparency
-    /CS /DeviceGray
->>
-}
-
-\immediate\pdfxform attr{
-    /Group \the\pdflastobj\space0 R
-}1%
-
-\immediate\pdfobj{
-<<
-    /Type /Mask
-    /S /Luminosity
-    /G \the\pdflastxform\space0 R
->>
-}
-
-\immediate\pdfobj{
-<<
-    /Type /ExtGState
-    /SMask \the\pdflastobj\space0 R
->>
-}
-
-\setbox0=\hbox to\w{\vrule width\z@ height\h depth\z@
-\pdfliteral{
-q
-    \nattrans,
-    /GS1 gs
-    /Sh sh
-Q
-}\hfil}
-\pdfxform resources{
-    /Shading << /Sh \S\space0 R >>
-    /ExtGState << /GS1 \the\pdflastobj\space0 R >>
-}0
-
-\pdfrefxform\pdflastxform
+\hbox{hi}
 
 \bye
 

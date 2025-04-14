@@ -1,0 +1,306 @@
+We begin by distinguishing between two concepts: {\it characters} and {\it glyphs}.
+Characters are abstract concepts (like the character ``A''), while a glyph is a specific rendering of a
+character (e.g. {\it A}, {\tt A}, {\bf A} are all glyphs of the character ``A'').
+A {\it font} defines the glyphs for a specific character set: for example computer modern roman defines the
+glyphs for a set of standard Latin characters.
+Fonts are defined in a form of program, called a {\it font program}, usually stored in a separate file, and
+written in a specialized language such as the {\it Type 1} or {\it TrueType} font formats.
+PDFs utilize a special kind of dictionary, called a {\it font dictionary}, to identify the font program
+and additional information about the font.
+
+A content stream can paint glyphs on a page by first specifying a font dictionary and then a string object
+which is interpreted as a sequence of character codes specifying glyphs in the font.
+The {\it glyph description}, stored in the font program, provides a sequence of graphics operators to execute
+in order to paint the glyph.
+A PDF consumer renders glyphs by then executing this sequence (for performance, glyphs can be cached).
+
+\subsection{Glyph structure}
+
+A glyph has a {\it glyph coordinate system}, which is the coordinate system in which it is defined.
+All graphics operations related to painting a glyph are done relative to the glyph coordinate system.
+Except for Type 3 fonts, units in the glyph space are $1/1000$th of a user space unit.
+
+A glyph has the following structure:
+
+\bigskip
+\bgroup
+\catcode`_=11
+\def\wbuf{2}
+\setbox1=\hbox{\setscale{8pt}origin }
+\edef\dxl{\_nopt{\wd1}}
+\setbox2=\hbox{ \vbox{\setscale{8pt}\halign{\hfil#\hfil\cr next\cr glyph\cr origin\cr}}}
+\edef\dxr{\_nopt{\wd2}}
+\setbox0=\hbox{\font\@@=ptmr7t\@@ g}
+\centerline{\hbox to\dimexpr\wd0+\dxl pt+\dxr pt\relax{\vrule width\z@ height10\ht0 depth10\dp0%
+\place{0}{\_nopt{.5\ht1}}{\box1}%
+\place{\_nopt{\dxl pt+10\wd0}}{\_nopt{.5\ht2}}{\box2}%
+\setbox2=\hbox{\setscale{8pt}width}%
+\setbox1=\vtop to\dimexpr10\dp0+6pt+\ht2\relax{\vfil\hbox{width}}%
+\place{\_nopt{\dxl pt+5\wd0-.5\wd2}}{0}{\box1}%
+\pdfliteral{%
+q
+    \nattrans,
+    1 0 0 1 \dxl\space 0 cm
+    1 j 1 J
+    .3 w
+    q
+    [3] 0 d
+    \wbuf\space -\_nopt{10\dp0} \_nopt{10\wd0-\wbuf pt * 2} \_nopt{10\dp0+10\ht0} re S
+    Q
+    0 3 m
+    0 -\_nopt{10\dp0+6pt} l S
+    0 0 m
+    \_nopt{10\wd0} 0 l
+    \_nopt{10\wd0} 3 l
+    \_nopt{10\wd0} -\_nopt{10\dp0+6pt} l S
+    0 -\_nopt{10\dp0+3pt} m
+    \_nopt{10\wd0} -\_nopt{10\dp0+3pt} l S
+    1 Tr
+    .1 w
+    10 0 0 10 0 0 cm
+}%
+\rlap{\box0}%
+\pdfliteral{Q}\hfil%
+}}
+\egroup
+\vskip1cm
+
+\noindent The {\it bounding box} is the dashed box around the glyph.
+It is the smallest box which encompasses the glyph shape.
+The {\it origin} of the glyph is point $(0,0)$ in the glyph coordinate system.
+The {\it glyph displacement} is a vector from the origin which gives the coordinate where the next glyph's
+origin should be placed.
+A glyph displacement that is horizontal is generally called the {\it width}.
+We deal here with only horizontal writing modes.
+
+\subsection{Text state}
+
+The current {\it text state} is composed of nine parameters which affect only the painting of text.
+These are:
+
+\btwotable{}{}
+{\bf Parameter}&{\bf Description}\cr\hline
+$T_c$&Character spacing\cr
+$T_w$&Word spacing\cr
+$T_h$&Horizontal scaling\cr
+$T_l$&Leading\cr
+$T_f$&Text font\cr
+$T_{\it fs}$&Text font size\cr
+$T_{\it mode}$&Text rendering mode\cr
+$T_{\it rise}$&Text rise\cr
+$T_k$&Text knockout
+\etwotable
+
+$T_f$ and $T_{\it fs}$ are self-explanatory.
+We will not discuss $T_k$.
+Within a text object, two further parameters are defined: $T_m$ the text matrix; $T_{\it lm}$ the text line
+matrix; and $T_{\it rm}$ the text rendering matrix.
+
+The parameters can be altered using the following operators:
+
+\bthreetable{\it}{\bf}{}
+{\bf Operands}&{\bf Operator}&{\bf Description}\cr\hline
+charSpace&Tc&Sets the character space $T_c$ to {\it charSpace} which is a unit in unscaled text space units.
+This is used by {\bf Tj}, {\bf TJ}, and {\bf '} operators.
+Initial value: $0$.\cr
+wordSpace&Tw&Sets the word space $T_w$ to {\it wordSpace} which is a unit in unscaled text space units.
+This is used by {\bf Tj}, {\bf TJ}, and {\bf '} operators.
+Initial value: $0$.\cr
+scale&Tz&Set the horizontal scaling $T_h$ to ${\it scale}/100$.
+{\it scale} is a number specifying the percentage of the normal width.
+Initial value: $100$.\cr
+leading&TL&Set the text leading $T_l$ to {\it leading}, a number expressed in unscaled text space units.
+Text leading is used by {\bf T*}, {\bf'}, and {\bf"} operators.\cr
+font size&Tf&Set the text font $T_f$ to {\it font} and font size $T_{\it fs}$ to {\it size}.
+{\it font} is the name of a font resource in the {\bf Font} subdictionary of the current resource dictionary.
+There is no initial value for either of these parameters; they must be specified before painting glyphs.\cr
+render&Tr&Set the text rendering mode $T_{\it mode}$ to {\it render}, an integer.
+Initial value: $0$.\cr
+rise&Ts&Set the text rise $T_{\it rise}$ to {\it rise}, which is a number in unscaled text space units.
+Initial value: $0$.
+\ethreetable
+
+A parameter in {\it unscaled} text space units means it is specified in a coordinate system defined by the
+text matrix $T_m$, but not scaled by the font size $T_{\it fs}$.
+
+\subsubsection{Character spacing}
+
+The character spacing parameter $T_c$ specifies the amount of spacing between characters.
+It is specified in unscaled text space, but is subject to scaling by the horizontal scaling parameter
+$T_h$.
+$T_c$ is added to the horizontal component of the widths displacement.
+For example:
+
+\moveright1cm\hbox{$T_c=0$: Character}
+\moveright1cm\hbox{$T_c=2$: \setbox0=\hbox{Character}\vrule width\z@ depth\dp0 height\ht0%
+\pdfliteral{q 2 Tc}\rlap{Character}\pdfliteral{Q}}
+
+\subsubsection{Word spacing}
+
+Word spacing acts similarly to character spacing, but only affects the space character, code $32$.
+\TeX{} treats spaces differently, and thus this parameter doesn't have an effect on strings written using
+\TeX.
+
+\subsubsection{Horizontal scaling}
+
+$T_h$ specifies how much the horizontal component of the glyphs should be stretched as a percentage.
+This also affects $T_c$ (character spacing) and $T_w$ (word spacing).
+
+\moveright1cm\hbox{$T_h=100$: Word}
+\moveright1cm\hbox{$T_h=50$: \setbox0=\hbox{WordWord}\vrule width\z@ depth\dp0 height\ht0%
+\pdfliteral{q 50 Tz}\rlap{WordWord}\pdfliteral{Q}}
+
+\subsubsection{Leading}
+
+$T_l$ specifies the distance between baselines (like \macro\baselineskip).
+This is not used by \TeX.
+
+\subsubsection{Text rendering mode}
+
+The text rendering mode $T_{\it mode}$ determines how glyphs are shown.
+It can cause glyphs to be stroked, filled, or added to the clipping path (or some combination of the three).
+The following table desribes the text rendering modes:
+
+\bthreetable{}{}{}
+{\bf Mode}&{\bf Example}&{\bf Description}\cr\hline
+0&\demotext{R}{0}&Fill text\cr
+1&\demotext{R}{1}&Stroke text\cr
+2&\demotext{R}{2}&Fill, then stroke text\cr
+3&\demotext{R}{3}&Neither fill nor stroke text (invisible)\cr
+4&\democlip{R}{0}{3}&Fill text and add to path for clipping\cr
+5&\democlip{R}{3}{1}&Stroke text and add to path for clipping\cr
+6&\democlip{R}{0}{1}&Fill, then stroke text, and add to path for clipping\cr
+7&\democlip{R}{3}{3}&Add to path for clipping
+\ethreetable
+
+The text rendering mode must not change inside a text object (see below).
+The glyphs are accumulated inside a text object, and at the end form a path where the outlines of each glyph
+are considered as subpaths.
+Then text, if specified, is filled using the nonzero winding number rule.
+The current clipping path, if specified, is intersected with this path (after all the stroking and filling
+operations).
+This remains in effect until an invocation of the {\bf Q} operator.
+
+\subsubsection{Text rise}
+
+Text rise, $T_{\it rise}$, specifies the distance in unscaled text space units, to move the baseline up or
+down from its default location.
+For example:
+
+\blisting
+(This ) Tj
+-5 Ts
+(text ) Tj
+5 Ts
+(moves ) Tj
+0 Ts
+(around) Tj
+\elisting
+
+will produce
+
+\medskip
+\hbox{This \pdfliteral direct{-5 Ts}text \pdfliteral direct{5 Ts}moves \pdfliteral direct{0 Ts}around}
+\medskip
+
+\subsection{Text objects}
+
+A PDF text object consists of operators that can show text strings, move the text position, and set text state
+and other parameters.
+Additionally, three parameters are defined only within a text object and do not persist between text objects:
+\benum
+    \item the {\it text matrix}, $T_m$;
+    \item the {\it text line matrix}, $T_{\it lm}$;
+    \item the {\it text rendering matrix}, $T_{\it rm}$.
+        This is actually just an intermediate result that combines the effects of text state parameters,
+        the text matrix, and the CTM.
+\eenum
+\noindent A text object has the form
+\blisting
+BT
+    ... text or other allowed operators ...
+ET
+\elisting
+\noindent{\bf BT} begins a text object, which initializes $T_m$ and $T_{\it lm}$ to the identity matrix.
+{\bf ET} ends the text object.
+Text objects cannot be nested.
+
+\subsubsection{Text space details}
+
+Text is shown in {\it text space}, which is defined by a combination of the text matrix $T_m$, and the text
+state parameters $T_{\it fs}$ (font size), $T_h$ (horizontal scaling), and $T_{\it rise}$ (text rise).
+This determines how text coordinates are transformed into user space.
+The transformation from text space to user space is represented by an intermediate object, the {\it text
+rendering matrix}, $T_{\it rm}$, which is:
+$$ T_{\it rm} = {\it CTM}\cdot T_m\cdot\pmatrix{T_{\it fs}\cdot T_h&0&0\cr0&T_{\it fs}&T_{\it rise}\cr0&0&1} $$
+That is, first we map a point $(x,y)$ according to the text state parameters, to
+$$ \pmatrix{x\cr y}\mapsto\pmatrix{T_{\it fs}\cdot T_h\cdot x\cr T_{\it fs}\cdot y+T_{\it rise}} $$
+then we map this according to the text matrix and the CTM to user space.
+$T_{\it rm}$ is an intermediate result, ostensibly recomputed before each glyph is painted.
+
+After a glyph is painted, the text matrix is updated according to the glyph's displacement and any spacing
+parameters which may apply.
+We define
+$$ t_x= \left(\left(w-\frac{T_j}{1000}\right)\cdot T_{\it fs}+T_c+T_w\right)\cdot T_h $$
+where
+\blist
+    \item $w$ is the width of the glyph;
+    \item $T_j$ is a positioning adjustment (specified in a {\bf TJ} array, see below);
+    \item $T_{\it fs},T_h$ are text state parameters corresponding to font size and horizontal scaling,
+        respectively.
+    \item $T_c,T_w$ are text state parameters corresponding to the current character- and word-spacing
+        parameters in the graphics state (only applied if necessary; e.g. $T_w$ is only applied between
+        words).
+\elist
+
+In addition to $T_m$, another parameter is stored: $T_{\it lm}$.
+This is the value of $T_m$ at the beginning of the line.
+This makes it easier to move to the next line: simply set $T_m$ to $T_{\it lm}$ displaced by some displacement.
+In particular, if you want to move to the next line, displaced by $(\Delta_x,\Delta_y)$, set
+$$ T_m = T_{\it lm} = T_{\it lm}\cdot\pmatrix{1&0&\Delta_x\cr0&1&\Delta_y\cr0&0&1} $$
+
+\subsubsection{Text placement operators}
+
+The following operators alter $T_m$ and $T_{\it lm}$:
+
+\bthreetable{\it}{\bf}{}
+{\bf Operands}&{\bf Operator}&{\bf Description}\cr\hline
+$\Delta_x\ \Delta_y$&Td&Move to the start of the next line, offset from the start of the current line by
+$\Delta=(\Delta_x,\Delta_y)$.
+$\Delta_x,\Delta_y$ are expressed in unscaled text space units.
+This has the effect of doing
+$$ T_m = T_{\it lm} = T_{\it lm}\cdot\pmatrix{1&0&\Delta_x\cr0&1&\Delta_y\cr0&0&1} $$\cr
+$\Delta_x\ \Delta_y$&TD&Move to the start of the next line, offset from the start of the current line
+by $\Delta=(\Delta_x,\Delta_y)$.
+As a side effect, sets the leading parameter in the text state.
+This has the same effect as doing {\tt$-\Delta_y$ TL} and then {\tt$\Delta_x\ \Delta_y$ Td}.\cr
+a b c d e f&Tm&Sets the text matrix and text line matrix
+$$ T_m = T_{\it lm} = \pmatrix{a&c&e\cr b&d&f\cr 0&0&1} $$
+The operands are all numbers.
+The matrices are not composed with the previous values of $T_m$ or $T_{\it lm}$.\cr
+---&T*&Move to the start of the next line.
+This is the same as doing {\tt0 $T_l$ Td}, where $T_l$ is the current leading parameter in the text state.
+\ethreetable
+
+\subsubsection{Text-showing operators}
+
+The following operators show text on the page.
+They reposition the glyphs as they do so.
+
+\bthreetable{\it}{\bf}{}
+{\bf Operands}&{\bf Operator}&{\bf Description}\cr\hline
+string&Tj&Show a text string.\cr
+string&{\tt'}&Move to the next line and show a text string.
+This has the same effect as doing {\tt T*} and then {\it string \tt Tj}.\cr
+$a_w\ a_c$ string&{\tt"}&Move to the next line and show a text string, using $a_w$ for word spacing and $a_c$
+for character spacing.
+This has the same effect as doing {\tt $a_w$ Tw}, {\tt $a_c$ TC}, and then {\it string \tt '}.\cr
+array&TJ&Show one or more text strings, allowing individual glyph positioning.
+Each element of {\it array} can be a string or a number.
+If a string, the operator shows the string.
+If a number, the operator adjusts the text position by that amount.
+The number is expressed in one-one thousandth of a unit in unscaled text space (this is the value $T_j$ above).
+A positive value has the effect of moving a glyph to the left, and a negative to the right.
+This is hard to interact with in \TeX.
+\ethreetable
+
