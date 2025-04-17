@@ -118,15 +118,16 @@ PaintType&integer&(Required) a code that determines how the color of the pattern
     the pattern cell.
     When the pattern cell's content stream begins execution, the current color is the one that was in effect
     in the parent content stream.
-    \item {\it Uncolored tiling pattern}: the pattern's content stream does not specify any color information.
+    \item {\it Uncolored tiling pattern}: the pattern's\hfil\break
+    content stream does not specify any color information.
     Instead, the entire pattern cell is painted a separately specified color each time the pattern is used.
 \eenum\cr
 TilingType&integer&(Required) a code that controls adjustments to the spacing of tiles relative to the
 device pixel grid:
 \benum
     \item {\it Constant spacing}: pattern cells are spaced consistently, i.e. by a miltiple of a device pixel.
-    To achieve this, the application may distort the pattern cell slightly by making small adjustments to
-    {\bf XStep}, {\bf YStep}, and the transformation matrix.
+    To achieve this, the application is allowed to distort the pattern cell slightly by making small
+    adjustments to {\bf XStep}, {\bf YStep}, and the transformation matrix.
     This distortion does not exceed one device pixel.
     \item {\it No distortion}: the pattern cell is not distorted, but the spacing between the pattern cells
     may vary by as much as one device pixel.
@@ -394,7 +395,7 @@ ColorSpace&name&(Required) the color space in which the color values are to be i
 This cannot be a {\bf Pattern} space.\cr
 Background&array&(Optional) an array containing a color value (appropriate to {\bf ColorSpace}) determining
 a background color value.
-If present, this is used to color any region outside of the region defined by the shading object.\cr
+If it is present, this is used to color any region outside of the region defined by the shading object.\cr
 BBox&array&(Optional) an array of the form $[x_0\ y_0\ x_1\ y_1]$ which defines the bottom-left and top-right
 coordinates of the bounding box to clip the shading to.
 \edicttable
@@ -674,7 +675,7 @@ The resulting pattern is
         h
         B
         Q
-    }
+    }\hfil
 }
 \pdfxform resources{/Pattern << /P \the\pdflastobj\space 0 R >>}0
 
@@ -782,7 +783,7 @@ The resulting pattern is
 \setbox0=\hbox to 100pt{\vrule width\z@ height100pt depth\z@%
     \pdfliteral{
         /Sh sh
-    }
+    }\hfil%
 }
 \pdfxform resources{/Shading << /Sh \the\pdflastobj\space 0 R >>}0
 

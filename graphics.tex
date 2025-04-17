@@ -55,9 +55,9 @@ The coordinate space which is native to a specific device is called its {\it dev
 
 \subsubsection{User space}
 
-To avoid the issues arising from using device-dependent coordinate spaces, PDF defines a device-independent
-coordinate system that remains the same relative to the current page no matter the medium in which it is
-displayed or printed.
+To avoid the issues arising from using device-dependent coordinate spaces, PDF defines a coordinate system
+which is device-independent; it remains the same relative to the current page no matter the medium in which
+it is displayed or printed.
 This is called the {\it user space} coordinate system.
 
 The {\bf CropBox} entry in a page dictionary specifies the rectangle of user space corresponding to the visible
@@ -318,7 +318,7 @@ used in the transparent imaging model.\cr
 CA&number&The current stroking alpha constant, specifying the shape or constant opacity value to be used for
 stroking operations in the transparent imaging model.\cr
 ca&number&Same as {\bf CA} but for non-stroking operations.\cr
-AIS&boolean&The alpha source flag (``alpha is shape''), which specifies whether the current soft mask and alpha
+AIS&boolean&The alpha source flag (``alpha is shape''), which specifies if the current soft mask and alpha
 constant are to be interpreted as shape values ({\bf true}) or opacity values ({\bf false}).\cr
 TK&boolean&The text knockout flag, which determines the behavior of overlapping glyphs within a text object in
 the transparent imaging model.
@@ -456,10 +456,10 @@ alter the curvature of the curve.
 \bgroup
 \centerline{%
 \hbox to300pt{\vrule width\z@ height200pt depth\z@%
-    \place{15}{0}{$p_0$}%
-    \place{45}{150}{$p_1$}%
-    \place{195}{150}{$p_2$}%
-    \place{295}{50}{$p_3$}%
+    \place{5}{0}{$p_0$}%
+    \place{40}{150}{$p_1$}%
+    \place{190}{150}{$p_2$}%
+    \place{290}{50}{$p_3$}%
     \pdfliteral{q
         \nattrans,
         0 0 m

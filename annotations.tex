@@ -84,9 +84,9 @@ attributes available via the {\bf AP} and {\bf AS} fields.
 \bdicttable
 N&stream or dictionary&(Required) the annotation's normal appearance.\cr
 R&stream or dictionary&(Optional) the annotation's rollover appearance.
-Default value: the value of the {\bf N} entry.\cr
+Default: the value of the {\bf N} entry.\cr
 D&stream or dictionary&(Optional) the annotation's down appearance.
-Default value: the value of the {\bf N} entry.
+Default: the value of the {\bf N} entry.
 \edicttable
 
 \noindent The annotation has the appearance determined by {\bf N}; until the user's cursor hovers over the
@@ -123,7 +123,7 @@ A text annotation's dictionary may have the following additional fields:
 
 \bdicttable
 Subtype&name&(Required) the type of annotation this dictionary describes; must be {\bf Text}.\cr
-Open&boolean&(Optional) a flag specifying whether the annotation (the sticky note) should be displayed open
+Open&boolean&(Optional) a flag specifying whether the annotation (sticky note) should be displayed open
 initially.
 Default: {\tt false}.\cr
 Name&name&(Optional) the name of an icon that should be used to display the annotation.
@@ -366,8 +366,8 @@ A&dictionary&(Optional) an action dictionary (see below) describing the action t
 annotation is clicked.\cr
 Dest&array or name or string&(Optional; not permitted if {\bf A} is present) a destination (see below) that
 will be jumped to when the link annotation is clicked.\cr
-H&name&(Optional) the annotation's {\it highlighting mode}, which describes the visual effect to be displayed
-upon the annotation being clicked.
+H&name&(Optional) the annotation's {\it highlighting mode}, describing the visual effect to be displayed
+upon clicking the annotation.
 {\bf H} may be one of the following:
 \blist
     \item {\bf N} (none): no highlighting;
