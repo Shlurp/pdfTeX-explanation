@@ -1,12 +1,35 @@
 \pdfcompresslevel=0
+\pdfminorversion=7
 \catcode`@=11
+\catcode`_=11
 \bgroup\lccode`?=`p \lccode`!=`t\lowercase{\egroup\def\@rmpt#1?!{#1}}
 \def\@nopt#1{\expandafter\@rmpt\the\dimexpr#1\relax}
 \def\nattrans,{.996264 0 0 .996264 0 0 cm}
 
-\hbox{\pdfliteral direct{[(A) -1000 (W) 1000 (A) 300 (Y)] TJ}}
+\quitvmode\pdfstartlink attr{/Border [3 3 [3]]}
+user {
+    /Subtype /Link
+    /A <<
+        /S /URI
+        /URI (https://account.adobe.com/plans)
+    >>
+    /Border [3 3 1 [3]]
+    /C [1 0 0]
+}%
+TThis is a testThis is a testThis is a testThis is a testThis is a testThis is a testThis is a testThis is a testThis is a testThis is a testThis is a testThis is a testThis is a testThis is a testhis is a test
+\pdfendlink
 
-\hbox{hi}
+\quitvmode\pdfstartlink attr{/Border [3 3 [3]]}
+user {
+    /Subtype /Link
+    /A <<
+        /S /URI
+        /URI (https://account.adobe.com/plans)
+    >>
+    /Border [3 3 1 [3]]
+    /C [1 0 0]
+}%
+Test\pdfendlink
 
 \bye
 

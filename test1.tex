@@ -1,21 +1,34 @@
 \pdfcompresslevel=0
-\documentclass{article}
-\usepackage{mathptmx}
+\catcode`@=11
 
-\usepackage{tikz}
+\nopagenumbers
 
-
-\begin{document}
-\fontname\font
-\usetikzlibrary{shapes.symbols}
-\begin{tikzpicture}
-    \shade [left color=red, right color=blue] (3,-2) rectangle (7,2);
-        \begin{scope}[opacity=.25, transparency group={isolated=false}]
-        \fill[black] (4.5,0) circle (1);
-    \end{scope}
-    \begin{scope}[opacity=.25, transparency group={isolated=false}]
-        \fill[black] (5.5,0) circle (1);
-    \end{scope}
-\end{tikzpicture}
-
-\end{document}
+\centerline{\hbox to100pt{\vrule width\z@ height100pt depth\z@%
+\pdfliteral{
+q
+.996264 0 0 .996264 0 0 cm
+100 0 0 100 0 0 cm
+BI
+    /BPC 8          % each value is a byte
+    /CS /DeviceRGB  % interpret colors as RGB
+    /F [ /AHx ]     % the stream is given in ASCII representing hexadecimal values
+    /W 9            % each line is given by 9 samples
+    /H 9            % 9 lines
+ID
+}%
+\pdfliteral{
+    ff0000 ff0000 ff0000 ff0000 ff0000 ff0000 ff0000 ff0000 ff0000 
+    ff0000 ffffff ffffff ffffff ffffff ffffff ffffff ffffff ff0000 
+    ff0000 ffffff 00ff00 00ff00 ffffff 00ff00 00ff00 ffffff ff0000 
+    ff0000 ffffff 00ff00 00ff00 ffffff 00ff00 00ff00 ffffff ff0000 
+    ff0000 ffffff ffffff ffffff ffffff ffffff ffffff ffffff ff0000 
+    ff0000 ffffff 0000ff ffffff ffffff ffffff 0000ff ffffff ff0000 
+    ff0000 ffffff ffffff 0000ff 0000ff 0000ff ffffff ffffff ff0000 
+    ff0000 ffffff ffffff ffffff ffffff ffffff ffffff ffffff ff0000 
+    ff0000 ff0000 ff0000 ff0000 ff0000 ff0000 ff0000 ff0000 ff0000>
+}%
+\pdfliteral{
+EI
+Q
+}\hfil}}
+\bye

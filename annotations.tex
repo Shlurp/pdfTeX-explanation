@@ -1,0 +1,468 @@
+An annotation is an interactive feature of a PDF, which allows the user to interact with the PDF using their
+keyboard and/or mouse.
+In this section we discuss various (but not all) annotation types.
+A page object has an optional {\bf Annots} field, which is an array of indirect references to all the
+annotation objects occurring on the page.
+Annotation objects are dictionaries which represent the annotation on the specified page.
+An annotation may be referenced from a single page's {\bf Annots} field only; it cannot be referenced by two
+pages simultaneously.
+
+The fields common to all annotations are
+
+\bdicttable
+Type&name&(Optional) the type of PDF object this dictionary describes; must be {\bf Annot}.\cr
+Subtype&name&(Required) the type of annotation this dictionary describes (see below).\cr
+Rect&array&(Required) a rectangle (array of $4$ numbers $[x\ y\ w\ h]$) which specifies the location of the
+annotation on the page.\cr
+Contents&string&(Optional) text that shall be displayed for the annotation (if relevant for the type of
+annotation); or an alternative description of the annotation's contents for accessibility readers.\cr
+P&dictionary&(Optional) an indirect reference to the page object associated with this annotation.\cr
+AP&dictionary&(Optional) an {\it appearance dictionary} which specifies
+how the annotation should be presented on the page.\cr
+AS&name&(Required if the annotation's appearance dictionary contains subdictionaries) the annotation's
+{\it appearance state}, which selects the applicable appearance stream from an appearance subdictionary.\cr
+Border&array&(Optional) an array specifying the characteristics of the annotation's border, which is a rounded
+rectangle.
+The array may have three or four elements, of the form $[r_h\ r_v\ w\ [o_n\ o_{\it ff}]]$ (the last element
+may be omitted).
+$r_h$ and $r_v$ are the horizontal and vertical radii, respectively.
+$w$ is the stroke width of the border.
+$[o_n\ o_{\it ff}]$ is the dash array of the border, it draws dashes of length $o_n$ with spaces of length
+$o_{\it ff}$ (the phase is $0$).\cr
+C&array&(Optional) an array of numbers in $[0,1]$ which represent the color to be used for
+\blist
+    \item the background of the annotation's icon when closed;
+    \item the title bar of the annotation's popup window;
+    \item the border of a {\bf Link} annotation.
+\elist
+The number of array elements determines the color space in which the color is to be interpreted.
+\expandafter\def\csname enumstyle1\endcsname#1{#1}
+\benum
+    \global\advancecounter{enum count}{-1}
+    \item no color; transparent;
+    \item {\bf DeviceGray};
+    \global\advancecounter{enum count}{1}
+    \item {\bf DeviceRGB};
+    \item {\bf DeviceCMYK};
+\eenum
+\edicttable
+
+\subsection{Border styles}
+
+An annotation may be surrounded by a border, printed within its annotation rectange, when displayed or printed.
+Some annotations (see below) may use the {\bf BS} field in place of the {\bf Border} field to specify a
+{\it border style dictionary} (instead of an array of numbers), which contains information on how the border
+should be displayed.
+The border style dictionary may have the following fields:
+
+\bdicttable
+Type&name&(Optional) the type of PDF object this dictionary describes; must be {\bf Border}.\cr
+W&number&(Optional) the border width in points.
+Default value: $1$.\cr
+S&name&(Optional) the border style:
+\blist
+    \item {\bf S}: (solid) a solid rectangle;
+    \item {\bf D}: (dashed) a dashed rectangle, the dash pattern may be specified by the {\bf D} entry;
+    \item {\bf B}: (beveled) a simulated embossed rectangle that appears to be raised above the surface of the
+    page.
+    \item {\bf I}: (inset) a simulated engraved rectangle that appears to be recessed below the surface of the
+    page.
+    \item {\bf U}: (underline) a single line along the bottom of the annotation rectangle.
+\elist
+Default value: {\bf S}.\cr
+D&array&A {\it dash array} of the form $[o_n\ o_{\it ff}]$ which specifies the pattern the dash pattern should
+take on (on for $o_n$ units, off for $o_{\it ff}$ units).
+Default value: $[3]$ (equivalent to $[3\ 3]$).
+\edicttable
+
+\subsection{Appearance streams}
+
+An annotation may also specify {\it appearance streams}, which form alternatives to the border and color
+attributes available via the {\bf AP} and {\bf AS} fields.
+{\bf AP}, the appearance dictionary, may specify the following fields:
+
+\bdicttable
+N&stream or dictionary&(Required) the annotation's normal appearance.\cr
+R&stream or dictionary&(Optional) the annotation's rollover appearance.
+Default value: the value of the {\bf N} entry.\cr
+D&stream or dictionary&(Optional) the annotation's down appearance.
+Default value: the value of the {\bf N} entry.
+\edicttable
+
+\noindent The annotation has the appearance determined by {\bf N}; until the user's cursor hovers over the
+annotation's active area, and the appearance changes to {\bf R}; when the user presses down the mouse button
+within the annotation's active area, the appearance changes to {\bf D}.
+The values of each entry may be a stream, or an {\it appearance subdictionary}.
+In the latter case, the appearance subdictionary defines multiple appearance streams according to different
+{\it appearance states} of the annotation.
+In the latter case, the {\bf AS} must specify which appearance state is to be displayed by default.
+
+For example, if we have a checkbox, it may have two states: {\bf On} and {\bf Off}.
+We have appearances for normal and down, but we don't need one for rollover.
+Then the appearance dictionary and appearance state may be:
+
+\blisting
+/AP <<
+    /N <<
+        /On 1 0 R
+        /Off 2 0 R
+    >>
+    /D <<
+        /On 3 0 R
+        /Off 4 0 R
+    >>
+>>
+/AS /Off
+\elisting
+
+\subsection{Text annotations}
+
+A text annotation appears as some object on the page (according to its appearance dictionary), and when the
+user hovers over it, a ``sticky note'' with specified text on it appears.
+A text annotation's dictionary may have the following additional fields:
+
+\bdicttable
+Subtype&name&(Required) the type of annotation this dictionary describes; must be {\bf Text}.\cr
+Open&boolean&(Optional) a flag specifying whether the annotation (the sticky note) should be displayed open
+initially.
+Default: {\tt false}.\cr
+Name&name&(Optional) the name of an icon that should be used to display the annotation.
+This field is only used if the appearance dictionary {\bf AP} is not specified.
+Valid names are: {\bf Comment}, {\bf Key}, {\bf Note}, {\bf Help}, {\bf NewParagraph}, {\bf Paragraph},
+{\bf Insert}.
+Default: {\bf Note}.
+\edicttable
+
+For example, take the following annotation: 
+
+\centerline{\pdfannot width10bp height10bp depth0pt{
+    /Subtype /Text
+    /Contents (This text should display when you hover over the icon)
+    /Name /Help
+}}
+
+\noindent It can be created using the following code:
+
+\blisting
+<<
+    /Type /Annot
+    /Subtype /Text
+    /Contents (This text should display when you hover over the icon)
+    /Name /Help 
+    /Rect [72 769.89 82 779.89]
+>>
+\elisting
+
+\noindent We can also create a text annotation which alters its state depending on the whether the user's
+cursor is hovering over it, or clicking, or not.
+First we need to create its three states:
+
+\blisting
+1 0 obj
+<<
+/Type /XObject
+/Subtype /Form
+/BBox [0 0 50 50]
+/FormType 1
+/Matrix [1 0 0 1 0 0]
+/Resources 2 0 R
+/Length 645       
+>>
+stream
+q 50 0 0 50 0 0 cm
+BI
+/BPC 8
+/CS /DeviceRGB
+/F [ /AHx ]
+/W 9
+/H 9
+ID
+... % code for smiley
+EI
+Q
+endstream
+endobj
+4 0 obj
+<<
+/Type /XObject
+/Subtype /Form
+/BBox [0 0 50 50]
+/FormType 1
+/Matrix [1 0 0 1 0 0]
+/Resources 5 0 R
+/Length 645       
+>>
+stream
+q 50 0 0 50 0 0 cm
+BI
+/BPC 8
+/CS /DeviceRGB
+/F [ /AHx ]
+/W 9
+/H 9
+ID
+... % code for straight face
+EI
+Q
+endstream
+endobj
+6 0 obj
+<<
+/Type /XObject
+/Subtype /Form
+/BBox [0 0 50 50]
+/FormType 1
+/Matrix [1 0 0 1 0 0]
+/Resources 7 0 R
+/Length 645       
+>>
+stream
+q 50 0 0 50 0 0 cm
+BI
+/BPC 8
+/CS /DeviceRGB
+/F [ /AHx ]
+/W 9
+/H 9
+ID
+... % code for frowny
+EI
+Q
+endstream
+endobj
+\elisting
+
+Then our annotation is simply
+\blisting
+% 8 0 obj
+<<
+    /Type /Annot
+    /Subtype /Text
+    /Contents (This is a face!)
+    /AP <<
+        /N 6 0 R
+        /R 4 0 R
+        /D 1 0 R
+    >>
+    /Rect [72 769.89 122 819.89]
+>>
+\elisting
+
+You can try it out here:
+
+\bgroup
+\setbox0=\hbox to50bp{\vrule width0bp height50bp depth0bp%
+\pdfliteral{
+q
+50 0 0 50 0 0 cm
+BI
+    /BPC 8
+    /CS /DeviceRGB
+    /F [ /AHx ]
+    /W 9
+    /H 9
+ID
+    ff0000 ff0000 ff0000 ff0000 ff0000 ff0000 ff0000 ff0000 ff0000 
+    ff0000 ffffff ffffff ffffff ffffff ffffff ffffff ffffff ff0000 
+    ff0000 ffffff 00ff00 00ff00 ffffff 00ff00 00ff00 ffffff ff0000 
+    ff0000 ffffff 00ff00 00ff00 ffffff 00ff00 00ff00 ffffff ff0000 
+    ff0000 ffffff ffffff ffffff ffffff ffffff ffffff ffffff ff0000 
+    ff0000 ffffff 0000ff ffffff ffffff ffffff 0000ff ffffff ff0000 
+    ff0000 ffffff ffffff 0000ff 0000ff 0000ff ffffff ffffff ff0000 
+    ff0000 ffffff ffffff ffffff ffffff ffffff ffffff ffffff ff0000 
+    ff0000 ff0000 ff0000 ff0000 ff0000 ff0000 ff0000 ff0000 ff0000 >
+EI
+Q
+}\hfil}
+\immediate\pdfxform0
+\edef\Smiley{\the\pdflastxform}
+
+\setbox0=\hbox to50bp{\vrule width0bp height50bp depth0bp%
+\pdfliteral{
+q
+50 0 0 50 0 0 cm
+BI
+    /BPC 8
+    /CS /DeviceRGB
+    /F [ /AHx ]
+    /W 9
+    /H 9
+ID
+    ff0000 ff0000 ff0000 ff0000 ff0000 ff0000 ff0000 ff0000 ff0000 
+    ff0000 ffffff ffffff ffffff ffffff ffffff ffffff ffffff ff0000 
+    ff0000 ffffff 00ff00 00ff00 ffffff 00ff00 00ff00 ffffff ff0000 
+    ff0000 ffffff 00ff00 00ff00 ffffff 00ff00 00ff00 ffffff ff0000 
+    ff0000 ffffff ffffff ffffff ffffff ffffff ffffff ffffff ff0000 
+    ff0000 ffffff ffffff ffffff ffffff ffffff ffffff ffffff ff0000 
+    ff0000 ffffff 0000ff 0000ff 0000ff 0000ff 0000ff ffffff ff0000 
+    ff0000 ffffff ffffff ffffff ffffff ffffff ffffff ffffff ff0000 
+    ff0000 ff0000 ff0000 ff0000 ff0000 ff0000 ff0000 ff0000 ff0000 >
+EI
+Q
+}\hfil}
+\immediate\pdfxform0
+\edef\Straight{\the\pdflastxform}
+
+\setbox0=\hbox to50bp{\vrule width0bp height50bp depth0bp%
+\pdfliteral{
+q
+50 0 0 50 0 0 cm
+BI
+    /BPC 8
+    /CS /DeviceRGB
+    /F [ /AHx ]
+    /W 9
+    /H 9
+ID
+    ff0000 ff0000 ff0000 ff0000 ff0000 ff0000 ff0000 ff0000 ff0000 
+    ff0000 ffffff ffffff ffffff ffffff ffffff ffffff ffffff ff0000 
+    ff0000 ffffff 00ff00 00ff00 ffffff 00ff00 00ff00 ffffff ff0000 
+    ff0000 ffffff 00ff00 00ff00 ffffff 00ff00 00ff00 ffffff ff0000 
+    ff0000 ffffff ffffff ffffff ffffff ffffff ffffff ffffff ff0000 
+    ff0000 ffffff ffffff ffffff ffffff ffffff ffffff ffffff ff0000 
+    ff0000 ffffff ffffff 0000ff 0000ff 0000ff ffffff ffffff ff0000 
+    ff0000 ffffff 0000ff ffffff ffffff ffffff 0000ff ffffff ff0000 
+    ff0000 ff0000 ff0000 ff0000 ff0000 ff0000 ff0000 ff0000 ff0000 >
+EI
+Q
+}\hfil}
+\immediate\pdfxform0
+\edef\Frowny{\the\pdflastxform}
+
+\centerline{\vrule width0bp height50bp depth0bp%
+\pdfannot width50bp height50bp depth0bp{
+    /Subtype /Text
+    /Contents (This is a face!)
+    /AP <<
+        /N \Frowny\space0 R
+        /R \Straight\space0 R
+        /D \Frowny\space0 R
+    >>
+    /Border [1 1 1 [3]]
+    /C [1 1 0]
+}}
+\egroup
+
+\bnote
+    Some annotations will only work on certain PDF viewers.
+    For example, the above annotation will not change states on Sumatra PDF.
+    It will on Adobe Acrobat (except it doesn't seem to support the down state).
+\eppbox
+
+There exist other annotation types, like caret annotations and stamp annotations, that do function well with
+\TeX.
+But since I don't see a use in them, and similar results can be obtained by text annotations, I will not
+discuss them here.
+
+\subsection{Link annotations}
+
+A link annotation represents either a hypertext link to a destination elsewhere in the document, or an action
+to be performed (explained below).
+A link annotation may have the following additional entries in its dictionary:
+
+\bdicttable
+Subtype&name&(Required) the type of annotation this dictionary describes; must be {\bf Link}.\cr
+A&dictionary&(Optional) an action dictionary (see below) describing the action to be performed when the link
+annotation is clicked.\cr
+Dest&array or name or string&(Optional; not permitted if {\bf A} is present) a destination (see below) that
+will be jumped to when the link annotation is clicked.\cr
+H&name&(Optional) the annotation's {\it highlighting mode}, which describes the visual effect to be displayed
+upon the annotation being clicked.
+{\bf H} may be one of the following:
+\blist
+    \item {\bf N} (none): no highlighting;
+    \item {\bf I} (invert): invert the colors of the contents in the annotation rectangle (default value);
+    \item {\bf O} (outline): invert the color of the annotation's border;
+    \item {\bf P} (push): display the annotation as if it were being pushed down below the surface of the page.
+\elist\cr
+BS&dictionary&(Optional) a border style dictionary (see above) which describes the border (alternative to
+{\bf Border}).
+\edicttable
+
+\subsubsection{Destinations}
+
+A destination defines a particular view of a document, and consists of the following:
+\benum
+    \item the page of the document to be displayed;
+    \item the location on the page to display;
+    \item the magnification (zoom) factor.
+\eenum
+
+When a destination is specified, this can be either given as an {\it explicit destination} (which is an array),
+a name (which is defined in the {\bf Dests} entry of the document catalog), or a string (whose value is defined
+in the {\bf Dests} entry of the name dictionary of the document ({\bf Names} entry of the catalog)).
+In the end these must all resolve to explicit destinations, whose syntax is described below:
+
+\bgroup
+\def\[{\hbox{\rm[}}\def\]{\hbox{\rm]}}
+\btwotable{\it}{}
+{\bf Syntax}&{\bf Meaning}\cr\hline
+\[page {\bf /XYZ} left top zoom\]&Display the page designated by {\it page} (a page object), with the
+coordinates $({\it left},{\it top})$ positioned in the upper-left corner of the window.
+The page's contents shall be magnified by a factor of {\it zoom}.
+A null value for any of the parameters (other than {\it page}) means that its value will remain unchanged.
+A {\it zoom} of $0$ is equivalent to a null value.\cr
+\[page {\bf/Fit}\]&Display the page designated by {\it page}, zoomed so that the page fits within the window
+in its smaller dimension and centered in the other.\cr
+\[page {\bf/FitH} top\]&Display the page {\it page} zoomed so that the page just fits into the window
+horizontally, and positioned so that {\it top} is at the top of the page.\cr
+\[page {\bf/FitV} left\]&Like {\bf FitH} but vertically.\cr
+\[page {\bf/FitR} left bottom right top\]&Display the page {\it page} zoomed so that the rectangle defined by
+{\it left bottom right top} fills the window.
+If the magnification required for horizontal and vertical dimensions are different, use the smaller zoom factor
+and center with the other dimension.
+\etwotable
+\egroup
+
+\subsubsection{Actions}
+
+An action is something that the PDF consumer can perform when something is triggered (the mouse clicking on
+a region, moving over a region, etc.).
+While actions are quite broad, we will discuss only a few of them and only a few trigger events.
+
+An action is specified by an action dictionary, which may have the following fields (and more, according to
+the type of action):
+
+\bdicttable
+Type&name&(Optional) the type of PDF object this dictionary describes; must be {\bf Action}.\cr
+S&name&(Required) the type of action this dictionary describes (see below).\cr
+Next&dictionary or array&(Optional) the next action, or actions, to execute after finishing this one.
+\edicttable
+
+Essentially each action dictionary forms a tree, whose value is the action to execute and children are the
+next actions to execute (in order).
+We discuss the following action types:
+
+\subsubsubsection{Go-To actions}
+
+A {\it go-to action} changes the view to a specified destionation.
+The additional entries to a go-to action dictionary are as follows:
+
+\bdicttable
+S&name&(Required) the type of action this dictionary describes; must be {\bf GoTo}.\cr
+D&name, string, or array&(Required) the destination to jump to.
+\edicttable
+
+\subsubsubsection{Launch actions}
+
+A {\it launch action} opens an application or a document.
+The additional entries to a launch action dictionary are as follows:
+
+\bdicttable
+S&name&(Required) the type of action this dictionary describes; must be {\bf Launch}.\cr
+F&string&(Required) the application to launch or document to open.\cr
+NewWindow&boolean&(Optional) if the file specified by {\bf F} is a PDF document, {\tt true} if it should be
+opened in a new window, and {\tt false} if it should open it in the same window.
+\edicttable
+
+\subsubsubsection{URI actions}
+
+A {\it uniform resource identifier} (URI) is a string that identifies (resolves to) a resource (either locally
+or on the Internet).
+A {\it URI action} causes a URI to be resolved.
+The additional entries to a URI action dictionary are as follows:
+
+\bdicttable
+S&name&(Required) the type of action this dictionary describes; must be {\bf URI}.\cr
+URI&string&(Required) the URI to resolve (encoded in UTF-8).
+\edicttable

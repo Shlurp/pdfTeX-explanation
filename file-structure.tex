@@ -72,10 +72,11 @@ Pages&dictionary&(Required; must be indirect) the {\it page tree node} (see belo
 document's {\it page tree} (see below).\cr
 PageLabels&number tree&(Optional) a number tree defining the page labeling for the document.
 The keys in the tree are page indicies, and the values are {\it page label dictionaries} (see below).\cr
+Names&dictionary&(Optional) The document's name tree (see below).\cr
 Dests&dictionary&(Optional) A dictionary of names and corresponding destinations (see below when we discuss
 hyperlinks).\cr
 URI&dictionary&(Optional) A dictionary containing information for URI actions (see below when we discuss
-hyperlinks).
+hyperlinks).\cr
 \edicttable
 
 \subsubsection{The page tree}
@@ -134,6 +135,22 @@ This is a content stream, which is a stream with operators telling the renderer 
 \listfile{hello-world.pdf}[51-55]
 \noindent The resources dictionary defines {\tt/F1} to be a font which is a reference to object {\tt4 0},
 which is a dictionary defining how to access the font.
+
+\subsubsection{The name dictionary}
+
+A document may have a {\it name dictionary}, specified in the {\bf Names} field of the document catalog.
+This dictionary contains fields which themselves are name trees (see above) which map strings to objects.
+For example, the name dictionary may have a name tree which maps strings to locations within the document.
+These names may then be referred to (when specified) in other objects.
+
+The name dictionary may have the following fields:
+
+\bdicttable
+Dests&name tree&(Optional) a name tree which maps strings to destinations (see below).\cr
+AP&name tree&(Optional) a name tree which maps strings to annotation appearance streams (see below).
+\edicttable
+
+\noindent Other fields exist, but we will not discuss them.
 
 \subsubsection{Resource Dictionaries}
 

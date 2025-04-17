@@ -666,14 +666,6 @@ Suppose we want to create the following effect of fading in the word ``hello'':
 >>
 }
 
-\immediate\pdfobj{
-<<
-    /Type /Pattern
-    /PatternType 2
-    /Shading \the\pdflastobj\space0 R
->>
-}
-
 \xdef\S{\the\pdflastobj}
 
 \immediate\pdfobj{
@@ -745,17 +737,10 @@ endobj
 
 % 16 0 obj                  resources of above XObject
 <<
-    /Shading << /Sh 4 0 R >>
+    /Shading << /Sh 3 0 R >>
     /ExtGState << /GS1 10 0 R >> 
     /ProcSet [ /PDF ]
 >>
-
-% 4 0 obj                   pattern object
-<<
-    /Type /Pattern
-    /PatternType 2
-    /Shading 3 0 R
->> 
 
 % 3 0 obj                   shading object
 <<

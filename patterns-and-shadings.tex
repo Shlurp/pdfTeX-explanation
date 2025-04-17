@@ -26,7 +26,7 @@ Take for example the two patterns below:
     \nattrans,
     .5 0 0 .5 0 0 cm
     1 j 1 J
-    /Pattern cs
+    /CSP cs
     /P scn
     0 100 m
     25 150 100 200 150 200 c
@@ -49,6 +49,7 @@ Take for example the two patterns below:
     \nattrans,
     .5 0 0 .5 0 0 cm
     1 j 1 J
+    /Pattern cs
     /P scn
     0 100 m
     25 150 100 200 150 200 c
@@ -482,6 +483,7 @@ endobj
 >>
 stream
 q
+/Pattern cs     % set color space to pattern
 /P scn          % set current pattern
 0 0 100 100 re  % draw rectangle
 B               % fill
@@ -526,6 +528,7 @@ The resulting pattern is:
 \setbox0=\hbox to 100pt{\vrule width\z@ height100pt depth\z@%
     \pdfliteral{
         q
+        /Pattern cs
         /P scn
         0 0 100 100 re
         B
@@ -613,6 +616,7 @@ We can use the following linear interpolation function
 >>
 stream
 q
+/Pattern cs
 /P scn
 50 100 m
 100 100 100 50 v 100 0 50 0 v 0 0 0 50 v 0 100 50 100 v % draw circle
@@ -660,6 +664,7 @@ The resulting pattern is
 \setbox0=\hbox to 100pt{\vrule width\z@ height100pt depth\z@%
     \pdfliteral{
         q
+        /Pattern cs
         /P scn
         50 100 m
         100 100 100 50 v
@@ -791,4 +796,8 @@ you can use the shading operator {\bf sh}.
 {\it name} must be specified in the {\bf Shading} subdictionary of the resource dictionary of the current
 content stream.
 This operator should only be applied to bounded or geometrically defined shadings.
+
+\bnote
+    The operand to the shading operator {\bf sh} must be a {\it shading object}; not a {\it pattern object}.
+\eppbox
 
