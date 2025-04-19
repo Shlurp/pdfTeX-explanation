@@ -132,6 +132,14 @@ This gives, for example:
 
 $$ \suum^{abcdefghijklm}_{nopqrstuvwxyz} $$
 
+\bnote
+    \TeX{} does not write the XObject into the PDF until it is referred to by \macro\pdfrefxform.
+    Thus if you want to paint it yourself using a {\tt Do} operation, you need to somehow first write it
+    into the PDF.
+    This can be done by prepending \macro\pdfxform{} with \macro\immediate.
+    This will write the XObject into memory immediately, instead of waiting for a reference.
+\eppbox
+
 \subsection{Shading}
 
 We can also use form XObjects to paint shadings (tiling patterns must be {\bf Pattern} objects, which requires
@@ -209,4 +217,215 @@ Now we can draw a shaded circle with the macro \macro\shadecircle, which results
 \xdef\shadecircle{\pdfrefxform\the\pdflastxform\relax}
 \egroup
 \centerline{\shadecircle}
+
+\subsection{Transparency}
+
+Transparency is also governed by XObjects (transparency group objects), so we will discuss that here.
+Suppose we want to draw four overlapping circles, each with an opacity of $.5$.
+First we draw our circles:
+
+\blisting
+\bgroup
+\setbox0=\hbox to100bp{\vrule width0bp height100bp depth0bp%
+\pdfliteral{
+    /Gs gs
+    .75 g
+    q
+    1 0 0 1 40 60 cm
+    \circle{30} f
+    Q
+    q
+    1 0 0 1 60 60 cm
+    \circle{30} f
+    Q
+    q
+    1 0 0 1 40 40 cm
+    \circle{30} f
+    Q
+    q
+    1 0 0 1 60 40 cm
+    \circle{30} f
+    Q
+}\hfil}
+\elisting
+
+\noindent Now we add {\bf Gs} to the resources.
+We will make the fill opacity $.5$ and the blend mode {\bf Multiply}.
+
+\blisting
+\pdfxform resources{
+    /ExtGState << /Gs <<
+        /ca 1
+        /BM /Multiply
+    >> >>
+}0
+\xdef\fourcircs{\pdfrefxform\the\pdflastxform\relax}
+\egroup
+\elisting
+
+\bgroup
+\setbox0=\hbox to100bp{\vrule width0bp height100bp depth0bp%
+\pdfliteral{
+    /Gs gs
+    .75 g
+    q
+    1 0 0 1 40 60 cm
+    \circle{30} f
+    Q
+    q
+    1 0 0 1 60 60 cm
+    \circle{30} f
+    Q
+    q
+    1 0 0 1 40 40 cm
+    \circle{30} f
+    Q
+    q
+    1 0 0 1 60 40 cm
+    \circle{30} f
+    Q
+}\hfil}
+\pdfxform resources{
+    /ExtGState << /Gs <<
+        /ca 1
+        /BM /Multiply
+    >> >>
+}0
+\xdef\fourcircs{\pdfrefxform\the\pdflastxform\relax}
+\egroup
+
+\centerline{\fourcircs}
+
+We can also make a more complicated drawing.
+Say we start with a gradient background, and draw four circles on it with an opacity of $.5$.
+But the four circles will form an isolated transparency group, and within the transparency group they are
+drawn with full opacity.
+
+\blisting
+\bgroup
+\setbox0=\hbox to100bp{\vrule width0bp height100bp depth0bp%
+\pdfliteral{
+    .75 g
+    q
+    1 0 0 1 40 60 cm
+    \circle{30} f
+    Q
+    q
+    1 0 0 1 60 60 cm
+    \circle{30} f
+    Q
+    q
+    1 0 0 1 40 40 cm
+    \circle{30} f
+    Q
+    q
+    1 0 0 1 60 40 cm
+    \circle{30} f
+    Q
+}\hfil}
+\immediate\pdfxform attr{
+    /Group <<
+        /S /Transparency
+        /CS /DeviceGray
+        /I true
+    >>
+}0
+\edef\fourcircsform{\the\pdflastxform}
+
+\setbox0=\hbox to100bp{\vrule width0bp height100bp depth0bp%
+\pdfliteral{
+    /Sh sh
+    /Gs gs
+    /4circs Do
+}\hfil}
+\pdfxform resources {
+    /Shading << /Sh <<
+        /ShadingType 2
+        /ColorSpace /DeviceRGB
+        /Coords [0 0 100 0]
+        /Domain [0 1]
+        /Function <<
+            /FunctionType 2
+            /Domain [0 1]
+            /C0 [1 0 0]
+            /C1 [0 1 1]
+            /N 1
+        >>
+    >> >>
+    /ExtGState << /Gs <<
+        /ca 1
+        /BM /Multiply
+    >> >>
+    /XObject <<
+        /4circs \fourcircsform\space0 R
+    >>
+}0
+\xdef\fourcircs{\pdfrefxform\the\pdflastxform\relax}
+\egroup
+\elisting
+
+\bgroup
+\setbox0=\hbox to100bp{\vrule width0bp height100bp depth0bp%
+\pdfliteral{
+    .75 g
+    q
+    1 0 0 1 40 60 cm
+    \circle{30} f
+    Q
+    q
+    1 0 0 1 60 60 cm
+    \circle{30} f
+    Q
+    q
+    1 0 0 1 40 40 cm
+    \circle{30} f
+    Q
+    q
+    1 0 0 1 60 40 cm
+    \circle{30} f
+    Q
+}\hfil}
+\immediate\pdfxform attr{
+    /Group <<
+        /S /Transparency
+        /CS /DeviceGray
+        /I true
+    >>
+}0
+\edef\fourcircsform{\the\pdflastxform}
+
+\setbox0=\hbox to100bp{\vrule width0bp height100bp depth0bp%
+\pdfliteral{
+    /Sh sh
+    /Gs gs
+    /4circs Do
+}\hfil}
+\pdfxform resources {
+    /Shading << /Sh <<
+        /ShadingType 2
+        /ColorSpace /DeviceRGB
+        /Coords [0 0 100 0]
+        /Domain [0 1]
+        /Function <<
+            /FunctionType 2
+            /Domain [0 1]
+            /C0 [1 0 0]
+            /C1 [0 1 1]
+            /N 1
+        >>
+    >> >>
+    /ExtGState << /Gs <<
+        /ca 1
+        /BM /Multiply
+    >> >>
+    /XObject <<
+        /4circs \fourcircsform\space0 R
+    >>
+}0
+\xdef\fourcircs{\pdfrefxform\the\pdflastxform\relax}
+\egroup
+
+This creates the following:
+
+\centerline{\fourcircs}
 

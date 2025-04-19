@@ -1,0 +1,199 @@
+To create a PDF object, we use the \macro\pdfobj{} primitive.
+Its usage is
+\getmacrousage{\pdfobj reserveobjnum | [useobjnum <number>] [stream ^^O[<attr spec>]^^C] <general text>}
+\noindent If {\tt reserveobjnum} is given, an object number is reserved, which can be accessed by
+\macro\pdflastobj.
+After doing {\tt reserveobjnum}, you can do {\tt useobjnum} to create a PDF object with that object number.
+
+If {\tt stream} is specified, then the object created is a stream object, whose stream dictionary is specified
+by {\it attr spec}.
+
+The object is kept in memory, and not written to the PDF file immediately, until its object number is passed
+to \macro\pdfrefobj{} or if \macro\pdfobj{} is preceeded by \macro\immediate.
+Unlike form XObjects, \macro\pdfrefobj{} does not paint anything, it simply writes the PDF object to the file
+at shipout time.
+
+The object number can be accessed by \macro\pdflastobj{} after \macro\pdfobj.
+
+\subsection{Tiling patterns}
+
+Recall that tiling pattern's pattern cell is defined by a stream object of type {\bf Pattern}.
+So for example, if we want to create an uncolored tiling pattern whose pattern cell is a circle.
+We first create the pattern cell, which is just a hollowed out circle:
+
+\blisting
+\immediate\pdfobj stream attr{
+    /Type /Pattern
+    /PatternType 1
+    /PaintType 2
+    /TilingType 1
+    /BBox [0 0 20 20] 
+    /XStep 20
+    /YStep 20
+    /Resources << >>
+}{
+    q
+    1 0 0 1 10 10 cm
+    \circle{10}
+    \circle{5} f*
+    Q
+}
+\elisting
+
+Now we create the outline of the pattern:
+
+\blisting
+\bgroup\setbox0=\hbox to200bp{\vrule width0bp height200bp depth0bp%
+\pdfliteral{
+    q
+    \pttrans
+    1 0 0 1 100 100 cm
+    /CSP cs
+    1 0 1 /P scn
+    \circle{100}
+    \circle{50} f*
+    Q
+}\hfil}
+\pdfxform resources{
+    /ColorSpace << /CSP [ /Pattern /DeviceRGB ] >>
+    /Pattern << /P \the\pdflastobj\space 0 R >>
+}0
+\xdef\donutdonut{\pdfrefxform\the\pdflastxform\relax}
+\egroup
+\elisting
+
+\immediate\pdfobj stream attr{
+    /Type /Pattern
+    /PatternType 1
+    /PaintType 2
+    /TilingType 1
+    /BBox [0 0 20 20] 
+    /XStep 20
+    /YStep 20
+    /Resources << >>
+}{
+    q
+    1 0 0 1 10 10 cm
+    \circle{10}
+    \circle{5} f*
+    Q
+}
+\bgroup\setbox0=\hbox to200bp{\vrule width0bp height200bp depth0bp%
+\pdfliteral{%
+    q
+    \pttrans
+    1 0 0 1 100 100 cm
+    /CSP cs
+    1 0 1 /P scn
+    \circle{100}
+    \circle{50} f*
+    Q
+}\hfil}
+\pdfxform resources{%
+    /ColorSpace << /CSP [ /Pattern /DeviceRGB ] >>
+    /Pattern << /P \the\pdflastobj\space 0 R >>
+}0
+\xdef\donutdonut{\pdfrefxform\the\pdflastxform\relax}
+\egroup
+
+\centerline{\donutdonut}
+
+\subsection{PostScript functions}
+
+PostScript functions (type 4 functions) must be written in content streams, and thus require a stream
+PDF object.
+For example, suppose we want to create a functional shading which has a weird effect.
+We define the function $f\colon[0,1]^2\to[0,1]$ by
+$$ f(x,y) = \frac{1+\sin(1800(x-.5)^2)\sin(1800(y-.5)^2)}2 $$
+(Trigonometric functions are computed in degrees.)
+Then our shading will be determined by $f$.
+To define the function we do:
+
+\blisting
+\immediate\pdfobj stream attr{
+    /Type /Function
+    /FunctionType 4
+    /Domain [0 1 0 1]
+    /Range [0 1]
+}{{
+    .5 sub
+    exch
+    .5 sub
+    dup
+    mul
+    1800 mul
+    sin
+    exch
+    dup
+    mul
+    1800 mul
+    sin
+    mul
+    1 add
+    2 div
+}}
+\elisting
+
+Then the actual shading is done by
+
+\blisting
+\bgroup
+\setbox0=\hbox to100bp{\vrule width0bp height100bp depth0bp%
+\pdfliteral{
+    /Sh sh
+}\hfil}
+\pdfxform resources {
+    /Shading << /Sh <<
+        /ShadingType 1
+        /ColorSpace /DeviceGray
+        /Domain [0 1 0 1]
+        /Matrix [100 0 0 100 0 0]
+        /Function \the\pdflastobj\space0 R
+    >> >>
+}0
+\egroup
+\elisting
+
+This creates
+
+\immediate\pdfobj stream attr{
+    /Type /Function
+    /FunctionType 4
+    /Domain [0 1 0 1]
+    /Range [0 1]
+}{{
+    .5 sub
+    exch
+    .5 sub
+    dup
+    mul
+    1800 mul
+    sin
+    exch
+    dup
+    mul
+    1800 mul
+    sin
+    mul
+    1 add
+    2 div
+}}
+
+\bgroup
+\setbox0=\hbox to100bp{\vrule width0bp height100bp depth0bp%
+\pdfliteral{
+    /Sh sh
+}\hfil}
+\pdfxform resources {
+    /Shading << /Sh <<
+        /ShadingType 1
+        /ColorSpace /DeviceGray
+        /Domain [0 1 0 1]
+        /Matrix [100 0 0 100 0 0]
+        /Function \the\pdflastobj\space0 R
+    >> >>
+}0
+
+\centerline{\pdfrefxform\pdflastxform}
+\egroup
+

@@ -1,0 +1,146 @@
+We can add annotation objects using the \macro\pdfannot{} primitive.
+Its usage is
+\getmacrousage{\pdfannot reserveobjnum | [useobjnum <number>] [<rule spec>] <general text>}
+\noindent Where {\it rule spec} is \getmacrousageB{(width | height | depth) <dimen> [<rule spec>]}.
+This should illustrate the reason for using \macro\pdfannot{} over \macro\pdfobj{} and with {\tt /Type /Annot}:
+you can give the annotation's activation area.
+
+Everything here is pretty self-explanatory.
+We can create a text annotation with different states like so:
+
+\blisting
+\bgroup
+\setbox1=\hbox{Rollover}
+\setbox0=\hbox to\wd1{\hfil Normal\hfil}
+\setbox2=\hbox to\wd1{\hfil Down\hfil}
+\immediate\pdfxform0 \edef\normal{\the\pdflastxform}
+\immediate\pdfxform1 \edef\rollover{\the\pdflastxform}
+\immediate\pdfxform2 \edef\down{\the\pdflastxform}
+\pdfannot width\wd0 height\ht0 depth\dp0 {
+    /Subtype /Text
+    /Contents (This is a text annotation with different states)
+    /AP <<
+        /N \normal\space0 R
+        /R \rollover\space0 R
+        /D \down\space0 R
+    >>
+    /Border [3 3 1]
+    /C [0 1 1]
+}
+\egroup
+\elisting
+
+This creates:
+
+\bgroup
+\setbox3=\hbox{Rollover}
+\setbox1=\copy3
+\setbox0=\hbox to\wd1{\hfil Normal\hfil}
+\setbox2=\hbox to\wd1{\hfil Down\hfil}
+\immediate\pdfxform0 \edef\normal{\the\pdflastxform}
+\immediate\pdfxform1 \edef\rollover{\the\pdflastxform}
+\immediate\pdfxform2 \edef\down{\the\pdflastxform}
+\centerline{\pdfannot width\wd3 height\ht3 depth\dp3 {
+    /Subtype /Text
+    /Contents (This is a text annotation with different states)
+    /AP <<
+        /N \normal\space0 R
+        /R \rollover\space0 R
+        /D \down\space0 R
+    >>
+}}
+\egroup
+
+\bnote
+    Many PDF viewers don't support multiple-state annotations.
+    Try viewing this PDF on Adobe Acrobat.
+\eppbox
+
+\subsection{Links and destinations}
+
+Consider the following issue: suppose we have an explicit destination we want to jump to.
+But the link itself spans multiple lines.
+\TeX{} will break the link over multiple lines, but how should the link border look?
+Well pdf\TeX{} actually provides a primitive for creating link annotations so that they can break across
+lines or even pages.
+It does this by inserting a new annotation for each line.
+
+This is done via the primitives \inlinecode|\pdfstartlink...\pdfendlink|, whose usage is
+\getmacrousage{\pdfstartlink [<rule spec>] [attr <general text>] <action spec>}
+\noindent where {\it action spec} is
+\getmacrousage{user <general text> | goto <goto action spec>}
+\noindent where {\it goto action spec} is
+\getmacrousage{name <general text> | page <number> <general text> | named <general text> <general text>}
+
+{\it attr spec} defines additional attributes for the annotation (e.g. {\bf Border}, {\bf C}).
+{\it action spec} defines the action to be done when the annotation's activation region is clicked.
+If {\it action spec} is {\tt user}, {\it general text} is added directly to the annotation's dictionary.
+We will discuss {\tt goto} actions later.
+For example, we may have a URL hyperlink:
+
+\blisting
+\pdfstartlink
+    attr {
+        /Border [3 3 1]
+        /C [1 0 0]
+    }
+    user {
+        /Subtype /Link
+        /A <<
+            /S /URI
+            /URI (https://tug.org/)
+        >>
+    }
+\TeX{} User Group%
+\pdfendlink
+\elisting
+
+This creates
+
+\centerline{%
+\pdfstartlink
+    attr {
+        /Border [3 3 1]
+        /C [1 0 0]
+    }
+    user {
+        /Subtype /Link
+        /A <<
+            /S /URI
+            /URI (https://tug.org/)
+        >>
+    }
+\TeX{} User Group%
+\pdfendlink}
+
+If the {\it goto action spec} is \getmacrousageB{page <number>}, when clicked, the document goes to the page
+specified by {\it number}, and the magnification factor is given by {\it general text}.
+
+\subsubsection{Destinations}
+
+You can create an indirect destination using the primitive \macro\pdfdest.
+Its usage is
+\getmacrousage{\pdfdest name <general text> (xyz [zoom <number>] | fitr <rule spec> | fith | fitv | fit)}
+\noindent This creates a destination at the current point whose name is {\it general text}.
+The type of destination is specified by the rest of the input (e.g. {\tt xyz} for {\bf/XYZ}).
+This destination can be refered to by its name as a string; its name is put in the name tree defined by
+the {\bf Dests} subdictionary of the document catalog's {\bf Name} dictionary.
+
+If {\tt xyz} is specified, an optional {\tt zoom} argument can be given.
+A zoom of $1000$ gives the normal page view.
+
+You can then then create a link to this destination like so:
+
+\blisting
+\pdfdest name {link name} xyz zoom 2000
+...
+\pdfstartlink
+    attr {
+        /Border [3 3 1]
+        /C [1 0 0]
+    }
+    goto name {link name}%
+This is a link%
+\pdfendlink
+\elisting
+
