@@ -1,0 +1,202 @@
+The most important primitive for our uses that pdf\TeX{} provides is the \macro\pdfliteral{} macro.
+The \macro\pdfliteral{} primitive inserts a whatsit (explained in the \TeX book, but not really important to
+our discussion) into the output stream containing raw PDF code.
+During the shipout of the current box, the PDF code is injected into the current content stream preceeding
+the whatsit.
+The exact usage of \macro\pdfliteral{} is as follows:
+
+\getmacrousage{\pdfliteral [shipout] [direct | page] <general text>}
+
+Where {\it general text} means material of the form \getmacrousageB{{<balanced text>}} where {\it balanced
+text} is text with balanced curly braces.
+A vanilla \macro\pdfliteral{} (meaning one without {\tt shipout} or {\tt direct} or {\tt page}) will insert
+{\it general text} (which is PDF code) into the document at the current position.
+It does the following:
+\benum
+    \item if in a text object, end the text object;
+    \item set the CTM to the current position in the document;
+    \item insert the PDF code.
+\eenum
+So for example, the result of
+
+\blisting
+Some text \pdfliteral{0 0 m 30 0 l S}\hbox to30bp{\hfil hi!\hfil}
+\elisting
+
+Will be the PDF code
+
+\blisting \setsyntax{pdf}
+BT
+/F1 9.9626 Tf 91.925 759.927 Td [(Some)-333(text)]TJ
+ET
+1 0 0 1 139.248 759.927 cm
+0 0 m 30 0 l S
+1 0 0 1 -139.248 -759.927 cm
+BT
+/F1 9.9626 Tf 148.713 759.927 Td [(hi!)]TJ
+ET
+\elisting
+
+\noindent We have here the following:
+\benum
+    \item a text object, with the text ``Some text'';
+    \item a transformation operation ({\bf cm}), which transform CTM to the current position in the document;
+    \item the inserted PDF code;
+    \item a transformation operation, which moves the CTM back to where it was previously.
+\eenum
+
+Normally, {\it general text} is fully expanded when the whatsit is created.
+This can be averted by using the {\tt shipout} keyword, which delays expansion to when the box is shipped out.
+
+Furthermore, instead of ending a text object (if in one), if the {\tt direct} keyword is given, pdf\TeX{} will
+add the PDF code to the text object.
+It will also not transform user space (i.e. the code is placed verbatim into the PDF, no matter where).
+Alternatively, {\tt page} will not transform user space, but it will exit a text object.
+
+\bnote
+    By default, units in a PDF are $1/72$ of an inch.
+    These are called {\it big points} in \TeX, abbreviated to {\tt bp}.
+    Normal \TeX{} {\tt pt}s are $1/72.27$ of an inch.
+    So in a \macro\pdfliteral{} it is often useful to transform user space so that $1{\rm\ unit}=1{\tt pt}$.
+    This can be done by scaling space by $72/72.27\approx.996264$.
+
+    We define the macro
+\blisting
+\def\pttrans{.996264 0 0 .996264 0 0 cm }
+\elisting
+    \noindent and we will use it throughout this part.
+    Note the space after the {\tt cm}, this is because operators must be followed with a space in a PDF.
+    (E.g. you can't do \inlinecode|10 0 0 10 0 0 cm3 w|.)
+
+    We also define the following macro which accepts a dimension expression, and expands to its result without
+    the trailing {\tt pt}:
+\blisting
+\bgroup\lccode`?=`p\lccode`!=`t%
+\lowercase{\egroup%
+    \def\rmpt#1?!{#1}%
+}%
+\def\nopt#1{\expandafter\rmpt\the\dimexpr#1\relax}%
+\elisting
+    So, for example \inlinecode|\nopt{10pt+20pt}| will expand to {\tt30}.
+    This is a useful macro when dealing with \macro\pdfliteral s (since their operands don't accept units).
+    This macro uses the trick that \macro\lowercase{} doesn't expand its input, and converts character codes
+    without altering category codes (and {\tt?} and {\tt!} have category code 12).
+\eppbox
+
+So suppose we'd like a macro which draws a dashed box around input text.
+We could do:
+
+\blisting
+\def\dashbox#1{\hbox{%
+    \setbox0=\hbox{#1}%
+    \pdfliteral{
+        q
+        \pttrans
+        .3 w
+        [3] 0 d
+        0 -\nopt{\dp0} \nopt{\wd0} \nopt{\dp0+\ht0} re
+        S
+        Q
+    }%
+    \box0%
+}}
+\elisting
+
+This will give, for example:
+\def\dashbox#1{\hbox{%
+    \setbox0=\hbox{#1}%
+    \pdfliteral{
+        q
+        \pttrans
+        .3 w
+        [3] 0 d
+        0 -\nopt{\dp0} \nopt{\wd0} \nopt{\dp0+\ht0} re
+        S
+        Q
+    }%
+    \box0%
+}}
+
+\centerline{\dashbox{Heya there!}}
+
+\noindent This could of course be done in Knuth-\TeX, but with significantly more difficulty
+
+We can also create a macro which draws a circle around text.
+We will use create an approximate circle with $4$ cubic B\'ezier curves.
+The optimal control points are each about $0.5523$ units away from each endpoint (on a unit circle).
+
+\blisting
+\def\maxdim#1#2{%
+    \ifdim\the\dimexpr#1\relax>\the\dimexpr#2\relax%
+        \dimexpr#1\relax%
+    \else%
+        \dimexpr#2\relax%
+    \fi%
+}
+\def\mult#1#2{\nopt{#1\dimexpr#2pt\relax}}
+\def\circle#1{
+    #1 0 m
+    #1 \mult{.5523}{#1} \mult{.5523}{#1} #1 0 #1 c
+    \mult{-.5523}{#1} #1 -#1 \mult{.5523}{#1} -#1 0 c
+    -#1 \mult{-.5523}{#1} \mult{-.5523}{#1} -#1 0 -#1 c
+    \mult{.5523}{#1} -#1 #1 \mult{-.5523}{#1} #1 0 c
+    h
+}
+\def\circbox#1{\hbox{%
+    \setbox0=\hbox{#1}%
+    \edef\radius{\nopt{.5\maxdim{\wd0}{\ht0+\dp0}}}%
+    \vrule width0pt depth\dimexpr\radius pt +.5\dp0-.5\ht0\relax height\dimexpr\radius pt+.5\ht0-.5\dp0\relax
+    \pdfliteral{
+        q
+        .3 w
+        [3] 0 d
+        1 0 0 1 \nopt{.5\wd0} \nopt{.5\ht0-.5\dp0} cm
+        \circle{\radius} S
+        Q
+    }\box0%
+}}
+\elisting
+
+\def\maxdim#1#2{%
+    \ifdim\the\dimexpr#1\relax>\the\dimexpr#2\relax%
+        \dimexpr#1\relax%
+    \else%
+        \dimexpr#2\relax%
+    \fi%
+}
+\def\mult#1#2{\nopt{#1\dimexpr#2pt\relax}}
+\def\circle#1{
+    #1 0 m
+    #1 \mult{.5523}{#1} \mult{.5523}{#1} #1 0 #1 c
+    \mult{-.5523}{#1} #1 -#1 \mult{.5523}{#1} -#1 0 c
+    -#1 \mult{-.5523}{#1} \mult{-.5523}{#1} -#1 0 -#1 c
+    \mult{.5523}{#1} -#1 #1 \mult{-.5523}{#1} #1 0 c
+    h
+}
+\def\circbox#1{\hbox{%
+    \setbox0=\hbox{#1}%
+    \edef\radius{\nopt{.5\maxdim{\wd0}{\ht0+\dp0}}}%
+    \vrule width0pt depth\dimexpr\radius pt +.5\dp0-.5\ht0\relax height\dimexpr\radius pt+.5\ht0-.5\dp0\relax
+    \pdfliteral{
+        q
+        .3 w
+        [3] 0 d
+        1 0 0 1 \nopt{.5\wd0} \nopt{.5\ht0-.5\dp0} cm
+        \circle{\radius} S
+        Q
+    }\copy0%
+}}
+
+\centerline{\circbox{Hey there!}}
+
+Now, we can ask ourselves, why is our definition of \macro\circle{} so complicated?
+Why not just define a parameterless \macro\unitcircle{} which draws a unit circle and then scale it?
+Because then this will also scale the width of the line drawn, which will lead to undesirable results.
+Also of course, this macro isn't perfect: the radius should really be $\sqrt{w^2+(h+d)^2}$ where $w,h,d$ are
+the width, height, and depth of the box respectively.
+But this requires being able to compute the square root, which is beyond the scope of this article.
+
+Finally, the reason for the \macro\vrule{} is to ensure that the box is given the correct height.
+\TeX{} is oblivious to the inserted PDF code, it doesn't know its dimensions, so it can't update the box
+accordingly.
+

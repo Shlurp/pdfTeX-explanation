@@ -404,6 +404,12 @@ coordinates of the bounding box to clip the shading to.
 We will focus on shading types $1$ through $3$, as $4$ through $7$ are much more complicated.
 If you're interested, consult the PDF reference.
 
+\bnote
+    The term {\it target coordinate space} means the pattern coordinate space, unless the shading is
+    invoked by the shading operator {\bf sh}, in which case it refers to the current user space.
+    Recall that the pattern coordinate space is {\it not} affected by changes to the CTM.
+\eppbox
+
 \subsubsection{Type 1 (Function-Based) Shadings}
 
 A function-based shading is one where the color at every point on the gradient is defined by a specified

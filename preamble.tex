@@ -47,8 +47,10 @@
 
 \def\macro#1{{\tt\string#1}}
 
-{\catcode`\<=\active
+{\catcode`\<=\active%
 \catcode`\^^M=\active%
+\catcode`\[=\active%
+\catcode`\|=\active%
 \gdef\_macrousage#1{%
     \bgroup%
     \catcode`\ =\active%
@@ -58,9 +60,13 @@
     \catcode`\$=12%
     \catcode`\\=12%
     \catcode`\<=\active%
+    \catcode`\[=\active%
+    \catcode`\|=\active%
     \catcode`\^^M=\active%
     \catcode`\#=12\relax%
     \def<##1>{$\langle${\it ##1}$\rangle$}%
+    \def[##1]{$\lbrack${\tt ##1}$\rbrack$}%
+    \def|{$\mid$}%
     \def^^M{\crcr}%
     \ifx.#1.%
         \_afterfi{\setbox0=\vbox\bgroup\halign\bgroup\tt\hfil##\crcr}%
@@ -274,3 +280,9 @@
 
 \catcode`_=\ulineccode
 
+\def\pttrans{.996264 0 0 .996264 0 0 cm }
+\bgroup\lccode`?=`p\lccode`!=`t%
+\lowercase{\egroup%
+    \def\rmpt#1?!{#1}%
+}%
+\def\nopt#1{\expandafter\rmpt\the\dimexpr#1\relax}%
