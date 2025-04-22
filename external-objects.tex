@@ -66,8 +66,171 @@ dictionary to be a reference to object {\tt1 0}.
 There are two ways to insert images into a PDF.
 One is using image XObjects, and another is using inline images where the content of the image is represented
 inline directly in a content stream.
-Image XObjects will be discussed later, with their respective pdf\TeX{} primitives.
 
+\subsubsection{Image XObjects}
+
+An external image file may be read into a PDF and referenced via an image XObject.
+An image XObject is a content stream: the stream itself represents the image data, and the dictionary (the
+image dictionary) contains the image's metadata.
+
+An image is two-dimensional array of samples, each sample representing a color.
+Each sample consists of as many color components as are needed for the color space in which they are specified
+(1 for {\bf DeviceGray}, 3 for {\bf DeviceRGB}, 4 for {\bf DeviceCMYK}).
+Each component may be a $1-,2-,4-,8-,16-$ bit integer.
+
+Fields in the image dictionary may include:
+
+\bdicttable
+Type&name&(Optional) the type of PDF object this dictionary describes; must be {\bf XObject}.\cr
+Subtype&name&(Required) the type of XObject this dictionary describes;\hfil\break must be {\bf Image}.\cr
+Width&integer&(Required) the width of the image, in samples.\cr
+Height&integer&(Required) the height of the image, in samples.\cr
+ColorSpace&name&(Required for images; not permitted for image masks (see below)) the color space in
+which the color samples reside.\cr
+BitsPerComponent&integer&(Required except for image masks) the number of bits used to represent each color
+component.
+This may be $1,2,4,8,$ or $16$.\cr
+ImageMask&boolean&(Optional) a flag which indicates whether this image shall be an image mask (see below).
+If {\tt true}, {\bf BitsPerComponent} must be $1$, and {\bf ColorSpace} and {\bf Mask} must be left
+unspecified.
+Default: {\tt false}.\cr
+Mask&stream or array&(Optional; not permitted for image masks) an image XObject defining an image mask to
+apply to this image; or an array specifying a range of colors to be applied as a color key mask (see below).
+If {\bf ImageMask} is {\tt true}, must be left undefined.\cr
+Decode&array&(Optional) an array of numbers describing how to map image samples into the range of values
+appropriate for the image's color space.
+If {\bf ImageMask} is {\tt true}, must be either $[0\ 1]$ or $[1\ 0]$.
+Otherwise it must be an array of length $2n$ where $n$ is the number of color components in the color space.
+The default value is $[0\ 1\ \dots\ 0\ 1]$.\cr
+SMask&stream&(Optional) an image XObject which defines a soft-mask image for the current image.
+The alpha value is determined by the luminosity of each pixel, and affects the shape or opacity depending on
+the {\bf AIS} flag in the current graphics state.\cr
+\edicttable
+
+{\bf Decode} decodes the samples so that the color components fall into the range required for the color space.
+Given a sample of $c_1\ \dots\ c_n$ and a decode array of $[D_{11}\ D_{12}\ \dots\ D_{n1}\ D_{n2}]$, the
+color components are decoded to be
+$$ c'_i = \interpolate(c_i;0,2^b-1,D_{i1},D_{i2}) $$
+where $b$ is the {\bf BitsPerComponent}.
+
+\subsubsubsection{Masked images}
+
+Generally, in the opaque image model (see below on transparency), an image takes a rectangular area on the
+page.
+Every pixel in the rectangular area is painted according to the image.
+But in PDF, an image may specify a {\bf Mask}, which is itself an image which determines which samples are
+drawn (unmasked) and which are not (masked) or an array determining which colors in the image to show.
+If {\bf Mask} specifies an image, it must be an {\it image mask}; an image whose {\bf ImageMask} is {\tt true}.
+
+An image mask is an image where every sample is a bit ({\bf BitsPerComponent} is $1$), and {\bf ColorSpace}
+must be left unspecified (since the samples don't represent colors).
+A ``black'' bit is unmasked; the underlying image will ``bleed'' through, changing the color of the
+area of the sample.
+A ``white'' bit is masked; the underlying image will not change the color of the area of the sample.
+
+The {\bf Decode} array of an image mask must be either $[0\ 1]$; in which case $0$ is a ``black'' bit and
+$1$ a ``white'' bit.
+Or it may be $[1\ 0]$ in which case $0$ is ``white'' and $1$ is ``black''.
+
+An image mask may not have the same {\bf Width} and {\bf Height} as the image it is masking.
+This is okay, since images are painted in a $1\times1$ square, so their areas will line up on the page
+regardless.
+
+\subsubsubsection{Color key masking}
+
+Instead of an image mask being specified for {\bf Mask}, instead an array of $2n$ integers may be specified,
+where $n$ is the number of color components in the {\bf ColorSpace} of the image.
+Let this array be $[m_1\ M_1\ \dots\ m_n\ M_n]$ where $m_i,M_i\in[0,2^b-1]$ ($b$ is {\bf BitsPerComponent}).
+A sample of value $c_1\ \dots\ c_n$ (before being decoded) is masked (not painted) if all of its components
+lie in $[m_i,M_i]$, i.e. it is not painted if $m_i\leq c_i\leq M_i$ for all $i\in[1,n]$.
+
+For example, we may have the following image:
+
+\blisting
+1 0 obj
+<<
+    /Type /XObject
+    /Subtype /Image
+    /Width 9
+    /Height 9
+    /Filter /ASCIIHexDecode
+    /ColorSpace /DeviceRGB
+    /BitsPerComponent 8
+    /Mask [255 255 255 255 255 255]
+    /Length 570
+>>
+stream
+    ff0000 ff0000 ff0000 ff0000 ff0000 ff0000 ff0000 ff0000 ff0000 
+    ff0000 ffffff ffffff ffffff ffffff ffffff ffffff ffffff ff0000 
+    ff0000 ffffff 00ff00 00ff00 ffffff 00ff00 00ff00 ffffff ff0000 
+    ff0000 ffffff 00ff00 00ff00 ffffff 00ff00 00ff00 ffffff ff0000 
+    ff0000 ffffff ffffff ffffff ffffff ffffff ffffff ffffff ff0000 
+    ff0000 ffffff 0000ff ffffff ffffff ffffff 0000ff ffffff ff0000 
+    ff0000 ffffff ffffff 0000ff 0000ff 0000ff ffffff ffffff ff0000 
+    ff0000 ffffff ffffff ffffff ffffff ffffff ffffff ffffff ff0000 
+    ff0000 ff0000 ff0000 ff0000 ff0000 ff0000 ff0000 ff0000 ff0000 >
+endstream
+endobj
+\elisting
+
+The image is painted with all white pixels masked out.
+We can then paint it in the following XObject, with a black background:
+
+\blisting
+2 0 obj
+<<
+    /Type /XObject
+    /Subtype /Form
+    /BBox [0 0 100 100]
+    /FormType 1
+    /Matrix [1 0 0 1 0 0]
+    /Resources 9 0 R
+    /Length 52        
+>>
+stream
+0 0 100 100 re f
+q 100 0 0 100 0 0 cm /SIm Do Q
+endstream
+endobj
+\elisting
+
+This results in
+
+\bgroup
+\immediate\pdfobj stream attr{
+    /Type /XObject
+    /Subtype /Image
+    /Width 9
+    /Height 9
+    /Filter /ASCIIHexDecode
+    /ColorSpace /DeviceRGB
+    /BitsPerComponent 8
+    /Mask [255 255 255 255 255 255]
+}{
+    ff0000 ff0000 ff0000 ff0000 ff0000 ff0000 ff0000 ff0000 ff0000 
+    ff0000 ffffff ffffff ffffff ffffff ffffff ffffff ffffff ff0000 
+    ff0000 ffffff 00ff00 00ff00 ffffff 00ff00 00ff00 ffffff ff0000 
+    ff0000 ffffff 00ff00 00ff00 ffffff 00ff00 00ff00 ffffff ff0000 
+    ff0000 ffffff ffffff ffffff ffffff ffffff ffffff ffffff ff0000 
+    ff0000 ffffff 0000ff ffffff ffffff ffffff 0000ff ffffff ff0000 
+    ff0000 ffffff ffffff 0000ff 0000ff 0000ff ffffff ffffff ff0000 
+    ff0000 ffffff ffffff ffffff ffffff ffffff ffffff ffffff ff0000 
+    ff0000 ff0000 ff0000 ff0000 ff0000 ff0000 ff0000 ff0000 ff0000 >
+}
+
+\setbox0=\hbox to100bp{\rlap{\vrule width100bp height100bp depth0bp}%
+\pdfliteral{q 100 0 0 100 0 0 cm /SIm Do Q}\kern100bp}
+\pdfxform resources{
+    /XObject << /SIm \the\pdflastobj\space0 R >>
+}0
+
+\centerline{\pdfrefxform\pdflastxform}
+\egroup
+
+\subsubsection{Inline images}
+
+As opposed to an image XObject, which is defined as an external (and reusable) object, an inline image may be
+defined entirely within the content stream in which it is used.
 An inline image is declared in a content stream in the following way:
 
 \blisting
@@ -81,7 +244,8 @@ EI  % end inline image object
 \noindent That is, the {\bf BI} operator begins the inline image dictionary (except its just a stream of
 key-value pairs, not wrapped in \inlinecode|<<...>>|), {\bf ID} ends it and begins the image data (which
 specifies how to color each pixel), and {\bf EI} ends the inline image object.
-The fields that can placed in between {\bf BI} and {\bf ID} are
+The fields that can placed in between {\bf BI} and {\bf ID} are a subset of the fields which may appear in
+an image XObject dictionary:
 
 \bdicttable
 BitsPerComponent&integer&(Required) the number of bits used to represent each color component (a single value
@@ -90,10 +254,10 @@ Valid values are $1,2,4,8,16$.\cr
 Width&integer&(Required) the width of the image, in samples.\cr
 Height&integer&(Required) the height of the image, in samples.\cr
 ColorSpace&name&(Required) the color space that the image is defined in.\cr
-Filter&array&(Required) an array of filters to be applied to the image data to decode it.
+Filter&array&(Required) an array of filters to be applied to the image data to decode it (like any stream).
 \edicttable
 
-We can use the following abbreviations for the fields:
+We can use the following abbreviations for the fields (only in inline images, not image XObjects):
 \blist
     \item {\bf BitsPerComponent} --- {\bf BPC}
     \item {\bf Width} --- {\bf W}

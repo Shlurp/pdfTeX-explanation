@@ -1,8 +1,10 @@
-We now discuss how to utilize form XObjects in pdf\TeX.
+We now discuss how to utilize XObjects in pdf\TeX.
 One may wonder why we don't first discuss PDF objects in general, and the answer is simple: they're less
 useful than form XObjects in pdf\TeX.
 This is because objects are in general much more internal to the PDF, and generally don't display content
 (unless they're XObjects or the content stream of a page object).
+
+\subsection{Form XObjects}
 
 pdf\TeX{} allows the creation of a form XObject in two steps:
 \benum
@@ -140,7 +142,7 @@ $$ \suum^{abcdefghijklm}_{nopqrstuvwxyz} $$
     This will write the XObject into memory immediately, instead of waiting for a reference.
 \eppbox
 
-\subsection{Shading}
+\subsubsection{Shading}
 
 We can also use form XObjects to paint shadings (tiling patterns must be {\bf Pattern} objects, which requires
 us to use general PDF objects, not XObjects; so they will be discussed in the next section).
@@ -218,7 +220,7 @@ Now we can draw a shaded circle with the macro \macro\shadecircle, which results
 \egroup
 \centerline{\shadecircle}
 
-\subsection{Transparency}
+\subsubsection{Transparency}
 
 Transparency is also governed by XObjects (transparency group objects), so we will discuss that here.
 Suppose we want to draw four overlapping circles, each with an opacity of $.5$.
@@ -428,4 +430,33 @@ drawn with full opacity.
 This creates the following:
 
 \centerline{\fourcircs}
+
+\subsection{Image XObjects}
+
+Say we want to include an image in a \TeX{} file.
+We could use an inline image for images that we know the samples of, or an image XObject by defining it
+explicitly (using \macro\pdfobj).
+But say we have an image file we'd like to include.
+We can use pdf\TeX{} primitives for this.
+
+The main character of the show is \macro\pdfximage, which reads an image file into memory.
+It supports the following formats: JPEG ({\tt.jpg} or {\tt.jpeg}), JBIG2 ({\tt.jbig2} or {\tt.jb2}), PNG
+({\tt.png}), or PDF ({\tt.pdf}).
+Its usage is
+\getmacrousage{\pdfximage [<rule spec>] [<attr spec>] [page <number>] <general text>}
+\noindent {\it general text} is the name of the file to import.
+
+The dimensions of the image can be controlled via {\it rule spec}.
+If some dimensions (but not all) are given, the others will be scaled to yield the same ratio between
+width and ${\rm height}+{\rm depth}$ as the image's ratio between height and depth.
+If no {\it rule spec} is given, the image will have its natural dimensions.
+
+If {\it general text} refers to a PDF file, \getmacrousageB{page <number>} may be specified, which imports
+that specific page from the PDF file.
+
+{\it attr spec} defines additional attributes which will be added to the image XObject.
+
+An image imported by \macro\pdfximage{} is not written to the PDF unless \macro\pdfximage{} is preceeded by
+\macro\immediate, or \macro\pdfrefximage{} is used on the object number of the image XObject (which is
+returned by \macro\pdflastximage).
 

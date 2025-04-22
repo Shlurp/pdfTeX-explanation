@@ -1,0 +1,230 @@
+\subsection{Color stacks}
+
+Consider the following code to color some text:
+
+\blisting
+\quitvmode\pdfliteral{q 1 0 0 rg 1 0 0 RG}Hello\pdfliteral{Q}Hey!
+\elisting
+
+(\macro\quitvmode{} is a pdf\TeX{} primitive which has essentially the same effect as \macro\leavevmode.)
+This will result in the following PDF code:
+
+\blisting \setsyntax{pdf}
+1 0 0 1 91.925 759.927 cm
+q 1 0 0 rg 1 0 0 RG
+1 0 0 1 -91.925 -759.927 cm
+BT
+/F1 9.9626 Tf 91.925 759.927 Td [(Hello)]TJ
+ET
+1 0 0 1 114.341 759.927 cm
+Q
+1 0 0 1 -114.341 -759.927 cm
+BT
+/F1 9.9626 Tf 114.341 759.927 Td [(Hey!)]TJ
+ET
+\elisting
+
+Let's see what happens here:
+\benum
+    \item the CTM is translated so that it points at the current position on the page;
+    \item the graphics state is pushed onto the stack, and the color is changed to red;
+    \item the CTM is translated back (since after the \macro\pdfliteral{} is executed, the CTM must be
+    repositioned);
+    \item ``Hello'' is printed;
+    \item the CTM is translated to the current position for the next \macro\pdfliteral;
+    \item the \macro\pdfliteral{} injects {\tt Q} to the content stream;
+    \item the CTM is translated back;
+    \item ``Hey!'' is printed.
+\eenum
+
+Note the issue: {\tt Q} is injected into the content stream, which pops the last graphics state.
+This graphics state was had the CTM positioned at $[{\tt1\ 0\ 0\ 1\ 91.925\ 759.927}]$, the placement of
+``Hello''.
+So the ``Hey!'' will be printed {\it over} ``Hello'', instead of after it!
+
+So we need some way of letting \TeX{} handle the graphics state stack.
+This can be done via two new pdf\TeX{} primtives: \macro\pdfcolorstackinit{} and \macro\pdfcolorstack.
+
+\macro\pdfcolorstackinit{} initializes a \TeX{} graphics state stack (also called a color stack), which can
+then be manipulated by \macro\pdfcolorstack.
+The usage of \macro\pdfcolorstackinit{} is as follows:
+\getmacrousage{\pdfcolorstackinit [page] [direct] <general text>}
+\noindent this initializes a \TeX{} graphics state stack, whose initial value is determined by {\it general
+text}.
+A usage of \macro\pdfcolorstackinit{} expands to the number of the \TeX{} graphics state stack, which is used
+by \macro\pdfcolorstack{} to manipulate the stack.
+If {\tt page} is given, then the \TeX{} graphics state stack is restored at the beginning of each page.
+If {\tt direct} is given, operations by \macro\pdfcolorstack{} will not break the current text object in which
+they may reside.
+
+The usage of \macro\pdfcolorstack{} is as follows:
+\getmacrousage{\pdfcolorstack <stack number> (set | push | pop | current) <general text>}
+\noindent This manipulates the stack given by {\it stack number} according the operation specified:
+\blist
+    \item {\tt set}: the current value of the \TeX{} graphics stack is replaced with {\it general text};
+    \item {\tt push}: {\it general text} is pushed to the top of the \TeX{} graphics stack, and becomes the new
+    current value;
+    \item {\tt pop}: the top value of the \TeX{} graphics state is removed and the new top becomes the
+    current graphics state;
+    \item {\tt current}: the PDF graphics state is set to the top value of the \TeX{} stack without modifying
+    the \TeX{} graphics state stack.
+\elist
+
+Importantly, \TeX{} implements its color stacks without using the {\tt q},{\tt Q} operators.
+When \macro\pdfcolorstack{} is used, it simply puts the top of the stack into the PDF content stream.
+For example:
+
+\blisting
+\chardef\tgs=\pdfcolorstackinit direct {0 g 0 G}
+
+\pdfcolorstack\tgs push{1 0 0 rg 1 0 0 RG}Hi
+\pdfcolorstack\tgs pop{}there!
+\elisting
+
+\noindent Will result in the PDF code
+
+\blisting \setsyntax{pdf}
+1 0 0 rg 1 0 0 RG
+BT
+/F1 9.9626 Tf 91.925 759.927 Td [(Hi)]TJ
+0 g 0 G
+ [-333(there!)]TJ
+ET
+\elisting
+
+\noindent Notice that instead of wrapping the first color change and text object in {\tt q...Q}, it simply
+places {\tt0 g 0 G} (the head of the stack after the {\tt pop}) after it.
+A \TeX{} graphics state can be used for any graphics state parameter, but it should be used for the same set
+of parameters for each {\tt push} operation.
+That is, if you start with the stack initialized to {\tt0 g 1 Tr}, don't all of the sudden push {\tt0 G}.
+The reason being that when you pop, you won't reset the stroking color (because {\tt0 g 1 Tr} doesn't change
+the stroke color).
+Similarly, don't {\it just} push {\tt1 g}, since if you then push something which uses {\tt Tr}, popping won't
+reset it.
+
+\subsection{The issue with transformations}
+
+Another issue is that of transformations.
+Suppose we do
+
+\blisting
+\chardef\tgs=\pdfcolorstackinit{1 0 0 1 0 0 cm}     % cant change CTM in a text object;
+                                                    % cannot be direct
+
+Hi
+\pdfcolorstack\tgs push{2 0 0 2 0 0 cm}there,
+\pdfcolorstack\tgs pop{}pal!
+\elisting
+
+\noindent The resulting PDF code shouldn't be surprising:
+
+\blisting \setsyntax{pdf}
+BT
+/F1 9.9626 Tf 91.925 759.927 Td [(Hi)]TJ
+ET
+1 0 0 1 105.486 759.927 cm
+2 0 0 2 0 0 cm              % here
+1 0 0 1 -105.486 -759.927 cm
+BT
+/F1 9.9626 Tf 105.486 759.927 Td [(there,)]TJ
+ET
+1 0 0 1 133.741 759.927 cm
+1 0 0 1 0 0 cm              % here
+1 0 0 1 -133.741 -759.927 cm
+BT
+/F1 9.9626 Tf 133.741 759.927 Td [(pal!)]
+ET
+\elisting
+
+\noindent Notice that when we {\tt pop} from the \TeX{} graphics state stack, it just writes
+{\tt1 0 0 1 0 0 cm} to the PDF file.
+Which effectively does nothing.
+So we're left with:
+
+\bigskip
+\hbox{%
+\pdfliteral{q}%
+\chardef\tgs=\pdfcolorstackinit{1 0 0 1 0 0 cm}
+\rlap{Hi
+\pdfcolorstack\tgs push{2 0 0 2 0 0 cm}there,
+\pdfcolorstack\tgs pop{}pal!}%
+\pdfliteral{Q}}
+
+Now suppose we use \macro\pdfliteral s instead:
+
+\blisting
+Hi
+\pdfliteral{q 2 0 0 2 0 0 cm}there,
+\pdfliteral{Q}pal!
+\elisting
+
+\noindent Then we get the following result:
+
+\bigskip
+\hbox{%
+Hi
+\pdfliteral{q 2 0 0 2 0 0 cm}\rlap{there},
+\pdfliteral{Q}pal!
+}
+
+\noindent Which is produced by the following PDF code:
+
+\blisting \setsyntax{pdf}
+BT
+/F1 9.9626 Tf 91.925 759.927 Td [(Hi)]TJ
+ET
+1 0 0 1 105.486 759.927 cm      % position for "there,"
+q 2 0 0 2 0 0 cm        % insertion here
+1 0 0 1 -105.486 -759.927 cm    % move back
+BT
+/F1 9.9626 Tf 105.486 759.927 Td [(there,)]TJ
+ET
+1 0 0 1 133.741 759.927 cm      % position for "pal!"
+Q                       % insertion here
+1 0 0 1 -133.741 -759.927 cm    % move back
+BT
+/F1 9.9626 Tf 133.741 759.927 Td [(pal!)]TJ
+ET
+\elisting
+
+\noindent Once again we can see that the issue is we reset the state to the position where ``there,'' is to
+be printed.
+
+While pdf\TeX{} does provide the primitives \macro\pdfsetmatrix, \macro\pdfsave, and \macro\pdfrestore, these
+do little but make \TeX{} aware of the changes to the CTM so it can properly place link and anchor positions.
+They don't do much else (\macro\pdfsave{} injects {\tt q} into the content stream, \macro\pdfrestore{} injects
+{\tt Q}).
+
+\subsubsubsection{An important note regarding transformations}
+
+When changing the CTM, make sure that the {\tt q} and {\tt Q} are injected into the PDF at the same 
+{\it place} in the document spatially.
+Otherwise, as you can see above this will mess up the CTM since the translation back is after the {\tt Q}.
+So the result is that the CTM is translated back (in the above example) $-133.741$ {\tt bp}s.
+Thus when you wrap a CTM change in {\tt q...Q}, also wrap it in \macro\rlap, like so:
+\blisting
+Hi,
+\pdfliteral{q 2 0 0 2 0 0 cm}\rlap{there,}%
+\pdfliteral{Q}pal!
+\elisting
+So while we still overlap with ``there'', we don't mess subsequent text (which will happen if the CTM
+is messed up).
+The resulting PDF code is:
+\blisting \setsyntax{pdf}
+BT
+/F1 9.9626 Tf 91.925 759.927 Td [(Hi)]TJ
+ET
+1 0 0 1 105.486 759.927 cm      % this matches with
+q 2 0 0 2 0 0 cm
+1 0 0 1 -105.486 -759.927 cm
+BT
+/F1 9.9626 Tf 105.486 759.927 Td [(there,)]TJ
+ET
+1 0 0 1 105.486 759.927 cm
+Q
+1 0 0 1 -105.486 -759.927 cm    % this
+BT
+/F1 9.9626 Tf 105.486 759.927 Td [(pal!)]TJ
+ET
+\elisting
+

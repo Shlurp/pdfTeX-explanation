@@ -70,7 +70,7 @@ This is done via the primitives \inlinecode|\pdfstartlink...\pdfendlink|, whose 
 \noindent where {\it action spec} is
 \getmacrousage{user <general text> | goto <goto action spec>}
 \noindent where {\it goto action spec} is
-\getmacrousage{name <general text> | page <number> <general text> | named <general text> <general text>}
+\getmacrousage{name <general text> | page <number> <general text>}
 
 {\it attr spec} defines additional attributes for the annotation (e.g. {\bf Border}, {\bf C}).
 {\it action spec} defines the action to be done when the annotation's activation region is clicked.
@@ -114,7 +114,7 @@ This creates
 \pdfendlink}
 
 If the {\it goto action spec} is \getmacrousageB{page <number>}, when clicked, the document goes to the page
-specified by {\it number}, and the magnification factor is given by {\it general text}.
+specified by {\it number}, and the magnification is given by {\it general text} ({\bf/Fit}, etc.).
 
 \subsubsection{Destinations}
 

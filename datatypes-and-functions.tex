@@ -92,6 +92,20 @@ A stream must be an \gotoanchor{indirect-objects}{{\it indirect object}}.
 The stream's dictionary which precedes the \inlinecode|stream...endstream| must have a \inlinecode|/Length|
 field which is equal to the byte length of the stream's content ({\tt...}).
 
+\subsubsubsection{Filters}
+
+A stream dictionary may specify a {\bf Filter} field which is either a name or an array of names.
+These are used to decode the stream content between {\tt stream} and {\tt endstream}.
+If an array of filters is specified, they are composed on the stream contents in sequence.
+
+We only discuss here {\bf ASCIIHexDecode}, which decodes two characters, which represent a byte in hex, into
+a byte.
+For example, {\tt 0f} is decoded into a byte value of $15$.
+
+\bnote
+    A {\tt>} symbol must be placed at the end of the data.
+\eppbox
+
 \subsubsection{Null}
 
 The null object is an object referencable by the keyword {\tt null}.
